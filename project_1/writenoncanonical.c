@@ -6,8 +6,8 @@
 #include <termios.h>
 #include <stdio.h>
 
-#define BAUDRATE B38400
-#define MODEMDEVICE "/dev/ttyS1"
+#define BAUDRATE B9600
+#define MODEMDEVICE "/dev/ttyS0"
 #define _POSIX_SOURCE 1 /* POSIX compliant source */
 #define FALSE 0
 #define TRUE 1
@@ -21,9 +21,9 @@ int main(int argc, char** argv)
     char buf[255];
     int a[3]={1,2,3};
     int i, sum = 0, speed = 0;
-    
-    if ( (argc < 2) || 
-  	     ((strcmp("/dev/ttyS0", argv[1])!=0) && 
+
+    if ( (argc < 2) ||
+  	     ((strcmp("/dev/ttyS0", argv[1])!=0) &&
   	      (strcmp("/dev/ttyS1", argv[1])!=0) )) {
       printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS1\n");
       exit(1);
@@ -53,13 +53,13 @@ int main(int argc, char** argv)
     newtio.c_lflag = 0;
 
     newtio.c_cc[VTIME]    = 0;   /* inter-character timer unused */
-    newtio.c_cc[VMIN]     = 5;   /* blocking read until 5 chars received */
+    newtio.c_cc[VMIN]     = 1;   /* blocking read until 5 chars received */
 
 
 
-  /* 
-    VTIME e VMIN devem ser alterados de forma a proteger com um temporizador a 
-    leitura do(s) próximo(s) caracter(es)
+  /*
+    VTIME e VMIN devem ser alterados de forma a proteger com um temporizador a
+    leitura do(s) prï¿½ximo(s) caracter(es)
   */
 
 
@@ -76,23 +76,21 @@ int main(int argc, char** argv)
     printf("msg: ");
     fgets(buf,sizeof(buf),stdin);
 
-    int i = 0;
-	while (buf[i] != '\0'){
-	i++;
- }
-    
-    res = write(fd,buf,i);   
-    printf("%d bytes written\n", res);
- 
+    buf[strlen(buf)-1]=0; // substitui o ultimo carater da string por 0
 
-  /* 
-    O ciclo FOR e as instruções seguintes devem ser alterados de modo a respeitar 
-    o indicado no guião 
+    res = write(fd,buf,strlen(buf)+1); //strlen(buf)+1 pois tem de ser o 0 no fim da string
+    printf("%d bytes written\n", res);
+
+
+  /*
+    O ciclo FOR e as instruï¿½ï¿½es seguintes devem ser alterados de modo a respeitar
+    o indicado no guiï¿½o
   */
 
 
 
-   
+    sleep(1);
+
     if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
       perror("tcsetattr");
       exit(-1);

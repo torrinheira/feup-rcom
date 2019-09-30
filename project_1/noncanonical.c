@@ -6,7 +6,7 @@
 #include <termios.h>
 #include <stdio.h>
 
-#define BAUDRATE B38400
+#define BAUDRATE B9600
 #define _POSIX_SOURCE 1 /* POSIX compliant source */
 #define FALSE 0
 #define TRUE 1
@@ -27,6 +27,7 @@ int main(int argc, char** argv)
     }
 
 
+
   /*
     Open serial port device for reading and writing and not as controlling tty
     because we don't want to get killed if linenoise sends CTRL-C.
@@ -41,6 +42,7 @@ int main(int argc, char** argv)
       exit(-1);
     }
 
+
     bzero(&newtio, sizeof(newtio));
     newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
     newtio.c_iflag = IGNPAR;
@@ -50,8 +52,7 @@ int main(int argc, char** argv)
     newtio.c_lflag = 0;
 
     newtio.c_cc[VTIME]    = 0;   /* inter-character timer unused */
-    newtio.c_cc[VMIN]     = 5;   /* blocking read until 5 chars received */
-
+    newtio.c_cc[VMIN]     = 1;   /* blocking read until 5 chars received */
 
 
   /*
@@ -62,6 +63,7 @@ int main(int argc, char** argv)
 
 
     tcflush(fd, TCIOFLUSH);
+    
 
     if ( tcsetattr(fd,TCSANOW,&newtio) == -1) {
       perror("tcsetattr");
@@ -71,21 +73,24 @@ int main(int argc, char** argv)
     printf("New termios structure set\n");
 
 
-    int i =0;
+    char* currChar = buf;
+
     while(STOP==FALSE){
-      res=read(fd,buf,1);
-      printf("%c",buf[i] );
-      if(buf[i] == '\0') STOP=TRUE;
-      i++;
+      res=read(fd,currChar,1);
+      if(*currChar == '\0') STOP=TRUE;
+      currChar += res;
     }
 
+    printf("Message received : %s\n", buf);
+    
+      
 
   /*
     O ciclo WHILE deve ser alterado de modo a respeitar o indicado no gui�o
   */
 
 
-
+    sleep(1);
     tcsetattr(fd,TCSANOW,&oldtio);
     close(fd);
     return 0;
