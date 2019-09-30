@@ -1,4 +1,4 @@
-# feup-rcom
+# FEUP-RCOM
 Repository of code developed for the course RCOM @FEUP.
 
 ## Info
