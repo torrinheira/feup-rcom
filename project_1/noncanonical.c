@@ -82,7 +82,17 @@ int main(int argc, char** argv)
     }
 
     printf("Message received : %s\n", buf);
+
+	// resends message
     
+	printf("Resending message ...\n");
+
+    // fgets(buf,sizeof(buf),stdin);
+
+    // buf[strlen(buf)-1]=0; // substitui o ultimo carater da string por 0
+
+    res = write(fd,buf,strlen(buf)+1); //strlen(buf)+1 pois tem de ser o 0 no fim da string
+    printf("%d bytes written\n", res);
       
 
   /*

@@ -80,15 +80,28 @@ int main(int argc, char** argv)
 
     res = write(fd,buf,strlen(buf)+1); //strlen(buf)+1 pois tem de ser o 0 no fim da string
     printf("%d bytes written\n", res);
-
+	printf("Message sent\n");
 
   /*
     O ciclo FOR e as instru��es seguintes devem ser alterados de modo a respeitar
     o indicado no gui�o
   */
 
+sleep(1);
+/* agora o escritor recebe o que o leitor reenviou*/
+printf("Reading message\n");
+	char* currChar = buf;
 
+    while(STOP==FALSE){
+      res=read(fd,currChar,1);
+      if(*currChar == '\0') STOP=TRUE;
+      currChar += res;
+    }
 
+    printf("Message received : %s\n", buf);
+    
+
+/*----------------------------------------------------*/
     sleep(1);
 
     if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
