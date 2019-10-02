@@ -5,7 +5,15 @@
 #include <fcntl.h>
 #include <termios.h>
 #include <stdio.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
 
+#include "states.h"
+
+#define M_FLAG 0xE7
+#define M_A_REC 0x03
+#define M_C_REC 0x03
 #define BAUDRATE B9600
 #define _POSIX_SOURCE 1 /* POSIX compliant source */
 #define FALSE 0
@@ -15,10 +23,13 @@ volatile int STOP=FALSE;
 
 int main(int argc, char** argv)
 {
+	printf("Reading a ko. .2634 . ");
     int fd,c, res;
     struct termios oldtio,newtio;
     char buf[255];
-
+	//aqui
+	char buf_m[255];
+	
     if ( (argc < 2) ||
   	     ((strcmp("/dev/ttyS0", argv[1])!=0) &&
   	      (strcmp("/dev/ttyS1", argv[1])!=0) )) {
@@ -70,10 +81,84 @@ int main(int argc, char** argv)
       exit(-1);
     }
 
+	// -----------------------------------
+	
+	printf("Reading a ko. . . ");
+
+	struct state_machine* st = create_state_machine();
+	printf("Reading a ko. .2346342634 . ");
+
+	unsigned char buffer[8];
+	bool flag = true;
+	printf("Reading a ko. . . ");
+	while(flag){
+
+
+		printf("Reading a byte . . . ");
+		read(fd, buffer, 8);
+
+		message_handler(st);
+
+		switch(getCurrentState(st)){
+
+			case START:
+				if(*buffer == M_FLAG)
+					setCurrentEvent(st, FLAG);
+			break;
+
+			case FLAG_RCV:
+				if(*buffer == M_FLAG)
+					setCurrentEvent(st, FLAG);
+				else if(*buffer == M_A_REC)
+					setCurrentEvent(st, A);
+				else setCurrentEvent(st, OTHER);
+
+			break;
+
+			case A_RCV:
+				if(*buffer == M_FLAG)
+					setCurrentEvent(st, FLAG);
+				else if(*buffer == M_C_REC)
+					setCurrentEvent(st, C);
+				else setCurrentEvent(st, OTHER);
+
+			break;
+
+			case C_RCV:
+				if(*buffer == M_FLAG)
+					setCurrentEvent(st, FLAG);
+				else if(*buffer == 0x00)
+					setCurrentEvent(st, BCC_OK);
+				else setCurrentEvent(st, OTHER);
+
+			break;
+
+			case BCC_OK:
+				if(*buffer == M_FLAG)
+					setCurrentEvent(st, FLAG);
+				else setCurrentEvent(st, OTHER);
+
+			break;
+
+			case STOP_RCV:
+				flag = false;
+
+			break;
+
+	printf("brrrrrrrrrrrrrr\n\n");
+	}
+
+}
+	
+	
+
+	// -----------------------------------
+
     printf("New termios structure set\n");
 
 
     char* currChar = buf;
+
 
     while(STOP==FALSE){
       res=read(fd,currChar,1);
