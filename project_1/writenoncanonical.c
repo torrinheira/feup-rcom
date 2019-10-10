@@ -5,14 +5,34 @@
 #include <fcntl.h>
 #include <termios.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <signal.h>
+
+#include "states.h"
 
 #define BAUDRATE B9600
 #define MODEMDEVICE "/dev/ttyS0"
 #define _POSIX_SOURCE 1 /* POSIX compliant source */
 #define FALSE 0
 #define TRUE 1
+#define M_FLAG 0x7e
+#define M_A_SND 0x01
+#define M_C_SND 0x07
+#define TRANSMITTER 0
+#define RECEIVER 1
+#define MAX_SIZE 255
 
 volatile int STOP=FALSE;
+
+void sendSet(int fd);
+int readUa(int fd);
+void failed(void);
+int llopen(int fd,int device);
+int llwrite(int fd, char * buffer, int length);
+
+int expired;
+int tries = 0;
 
 int main(int argc, char** argv)
 {
@@ -52,8 +72,8 @@ int main(int argc, char** argv)
     /* set input mode (non-canonical, no echo,...) */
     newtio.c_lflag = 0;
 
-    newtio.c_cc[VTIME]    = 0;   /* inter-character timer unused */
-    newtio.c_cc[VMIN]     = 1;   /* blocking read until 5 chars received */
+    newtio.c_cc[VTIME]    = 2;   /* inter-character timer unused */      //iniciais eram 0\n1
+    newtio.c_cc[VMIN]     = 0;   /* blocking read until 5 chars received */
 
 
 
@@ -76,60 +96,234 @@ int main(int argc, char** argv)
 /* -------------------------------------------------------------------------------------------------------------*/
 /* -------------------------------------------------------------------------------------------------------------*/
 
-    printf("Setting\n" );
-    unsigned char message[5] = {0xe7, 0x03, 0x03, 0x03^0x03, 0xe7};
-    write(fd, message, 5);
-    printf("Setting done\n" );
 
 
 
-
-/* -------------------------------------------------------------------------------------------------------------*/
-/* -------------------------------------------------------------------------------------------------------------*/
-/* -------------------------------------ENVIAR MENSAGENS--------------------------------------------------------*/
-/* -------------------------------------------------------------------------------------------------------------*/
-/* -------------------------------------------------------------------------------------------------------------*/
-    printf("New termios structure set\n");
-
-    printf("msg: ");
-    fgets(buf,sizeof(buf),stdin);
-
-    buf[strlen(buf)-1]=0; // substitui o ultimo carater da string por 0
-
-    res = write(fd,buf,strlen(buf)+1); //strlen(buf)+1 pois tem de ser o 0 no fim da string
-    printf("%d bytes written\n", res);
-	printf("Message sent\n");
-
-  /*
-    O ciclo FOR e as instru��es seguintes devem ser alterados de modo a respeitar
-    o indicado no gui�o
-  */
-
-sleep(1);
-/* agora o escritor recebe o que o leitor reenviou*/
-printf("Reading message\n");
-	char* currChar = buf;
-
-    while(STOP==FALSE){
-      res=read(fd,currChar,1);
-      if(*currChar == '\0') STOP=TRUE;
-      currChar += res;
-    }
-
-    printf("Message received : %s\n", buf);
+		if(llopen(fd,TRANSMITTER) < 0){
+			perror("could not establish connection");
+			exit(-1);
+	}
+	  //-------------------------------------
 
 
-/*----------------------------------------------------*/
-    sleep(1);
 
+	  //-------------------------------------
+
+	sleep(1);
     if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
       perror("tcsetattr");
       exit(-1);
     }
-
-
-
-
     close(fd);
     return 0;
 }
+
+//Funcoes Auxiliares
+
+int llwrite(int fd, char * buffer, int length){
+	
+	bool not_done = true;
+	int index = 0;
+	while(not_done){
+	
+	unsigned char * message = createsInfoMessage();
+
+	index = fillsData(message,buffer, length,index);
+
+	/*
+		
+		
+		CODIGO QUE ENVIA A MENSAGEM E ESPERA PELO ACK
+		sera um WHILE
+
+
+
+	*/
+
+
+	if(index == (length -1))
+		not_done = false;
+
+
+	}
+	
+	
+}
+
+
+int llopen(int fd,int device){
+
+	if(device == TRANSMITTER){
+		
+		int success = 0;
+
+	
+
+		while(tries < 3){
+			alarm(3);
+			(void) signal(SIGALRM, failed);	
+			sendSet(fd);
+			if(-1 == readUa(fd))
+				continue;
+			success = 1;
+			break;
+		}
+
+
+		(void) signal(SIGALRM, SIG_IGN);
+
+		printf("UA received. Connection estabilished \n\n");
+	
+		return fd;
+		}
+		
+		else
+			return -1;
+}
+
+unsigned char * createsInfoMessage(){
+
+	static int alternate = 0;
+
+	unsigned char* buffer[255];
+
+	buffer[0] = M_FLAG;
+
+	buffer[1] = 0x03;
+
+	if(altenate == 0)
+		buffer[2] = 0x00;
+	else if(alternate == 1)
+		buffer[2] = 0x40;
+
+	buffer[3] = buffer[1]^buffer[2];
+
+
+	if(alternate == 0)
+		alternate = 1;
+	else if(alternate == 1)
+		alternate = 0;
+	else return -1;
+
+	return buffer;
+	
+}
+
+//RETURNS INDEX OF DATA
+int fillsData(unsigned char* message, char* buffer, int length, int index){
+		
+
+	int i;
+	unsigned char bcc = buffer[index];
+
+	for(i = 4; i <= 253 ; i++){
+		message[i] = buffer[index];
+
+		//para BCC2
+		if(i > 4)
+			bcc = bcc^message[i]; 
+
+		index++;
+
+	if(index == (length -1)){// -1?
+		i++;		
+		break;
+		}		
+
+	}
+	message[i] = bcc;
+	message[i+1] = M_FLAG;
+	return index;
+}
+
+
+void sendSet(int fd){
+
+    unsigned char message[5] = {0x7e, 0x03, 0x03, 0x03^0x03,0x7e};
+    write(fd, message, 5);
+}
+
+int readUa(int fd){
+
+
+	struct state_machine* st = create_state_machine();
+	unsigned char buffer[8];
+	bool flag = true;
+
+	bool toRead = true;
+
+	while(flag){
+
+
+
+		if(toRead){
+			if(0 == (read(fd, buffer, 1)))
+				return -1;
+		}	
+
+
+		message_handler(st);
+
+		switch(getCurrentState(st)){
+
+			case START:
+				if(*buffer == M_FLAG)
+					setCurrentEvent(st, FLAG);
+			break;
+
+			case FLAG_RCV:
+				if(*buffer == M_FLAG)
+					setCurrentEvent(st, FLAG);
+				else if(*buffer == M_A_SND)
+					setCurrentEvent(st, A);
+				else setCurrentEvent(st, OTHER);
+
+			break;
+
+			case A_RCV:
+				if(*buffer == M_FLAG)
+					setCurrentEvent(st, FLAG);
+				else if(*buffer == M_C_SND)
+					setCurrentEvent(st, C);
+				else setCurrentEvent(st, OTHER);
+
+			break;
+
+			case C_RCV:
+				if(*buffer == M_FLAG)
+					setCurrentEvent(st, FLAG);
+				else if(*buffer == (0x01^0x07))
+					setCurrentEvent(st, BCC_OK);
+				else setCurrentEvent(st, OTHER);
+
+			break;
+
+			case BCC_OK:
+				if(*buffer == M_FLAG){
+					setCurrentEvent(st, FLAG);
+					toRead = false;
+				}
+
+				else setCurrentEvent(st, OTHER);
+
+			break;
+
+			case STOP_RCV:
+				flag = false;
+				return 1;
+			break;
+		}
+
+	}	
+
+}
+
+void failed(){
+	tries++;
+	if(tries == 3)
+		exit(-1);
+	expired = 1;
+	(void) signal(SIGALRM, SIG_IGN);
+	printf("Time expired!\n");
+}
+

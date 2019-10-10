@@ -11,23 +11,29 @@
 
 #include "states.h"
 
-#define M_FLAG 0xE7
+#define M_FLAG 0x7e
 #define M_A_REC 0x03
 #define M_C_REC 0x03
 #define BAUDRATE B9600
 #define _POSIX_SOURCE 1 /* POSIX compliant source */
 #define FALSE 0
 #define TRUE 1
+#define TRANSMITTER 0
+#define RECEIVER 1
 
 volatile int STOP=FALSE;
 
+void readSET(int fd);
+void sendUA(int fd);
+void readInfoZero(int fd);
+int llopen(int porta, int device);
+
 int main(int argc, char** argv)
 {
-	printf("Reading a ko. .2634 . ");
+
     int fd,c, res;
     struct termios oldtio,newtio;
     char buf[255];
-	//aqui
 	char buf_m[255];
 	
     if ( (argc < 2) ||
@@ -81,21 +87,55 @@ int main(int argc, char** argv)
       exit(-1);
     }
 
-	// -----------------------------------
-	
-	printf("Reading a ko. . . ");
+	// ----------------- READS SET AND SENDS UA ------------------
 
-	struct state_machine* st = create_state_machine();
-	printf("Reading a ko. .2346342634 . ");
+	if(llopen(fd, RECEIVER) < 0){
+		perror("could not establish connection");
+		exit(-2);
+	}
+	
+
+
+
+	//chamar llread
+
+
+
+	sleep(1);
+ 	tcsetattr(fd,TCSANOW,&oldtio);
+    close(fd);
+    return 0;
+}
+
+int llopen(int fd, int device){
+	if(device == RECEIVER){
+		
+		readSET(fd);
+
+		printf("SET received, everything is OK\n");
+		printf("Sending UA ...\n");
+
+		sendUA(fd);
+		return fd;
+	} else return -1;
+}
+
+// Reads SET from writenoncanonical.c
+void readSET(int fd){
+
+	struct state_machine* st = create_state_machine("set");
 
 	unsigned char buffer[8];
 	bool flag = true;
-	printf("Reading a ko. . . ");
+
+	bool toRead = true;
+
 	while(flag){
-
-
-		printf("Reading a byte . . . ");
-		read(fd, buffer, 8);
+	
+		// checks if it should keep on reading
+		if(toRead){
+			read(fd, buffer, 1);
+		}
 
 		message_handler(st);
 
@@ -134,8 +174,11 @@ int main(int argc, char** argv)
 			break;
 
 			case BCC_OK:
-				if(*buffer == M_FLAG)
+				if(*buffer == M_FLAG){
 					setCurrentEvent(st, FLAG);
+					toRead = false;
+				}
+
 				else setCurrentEvent(st, OTHER);
 
 			break;
@@ -144,49 +187,97 @@ int main(int argc, char** argv)
 				flag = false;
 
 			break;
+		}
 
-	printf("brrrrrrrrrrrrrr\n\n");
 	}
 
 }
-	
-	
 
-	// -----------------------------------
+// sends UA
+void sendUA(int fd){
 
-    printf("New termios structure set\n");
-
-
-    char* currChar = buf;
-
-
-    while(STOP==FALSE){
-      res=read(fd,currChar,1);
-      if(*currChar == '\0') STOP=TRUE;
-      currChar += res;
-    }
-
-    printf("Message received : %s\n", buf);
-
-	// resends message
-    
-	printf("Resending message ...\n");
-
-    // fgets(buf,sizeof(buf),stdin);
-
-    // buf[strlen(buf)-1]=0; // substitui o ultimo carater da string por 0
-
-    res = write(fd,buf,strlen(buf)+1); //strlen(buf)+1 pois tem de ser o 0 no fim da string
-    printf("%d bytes written\n", res);
-      
-
-  /*
-    O ciclo WHILE deve ser alterado de modo a respeitar o indicado no gui�o
-  */
-
-
-    sleep(1);
-    tcsetattr(fd,TCSANOW,&oldtio);
-    close(fd);
-    return 0;
+	unsigned char message[5] = {0x7e, 0x01, 0x07, 0x01 ^ 0x07, 0x7e};
+	write(fd, message, 5);
+	printf("UA sent\n");
 }
+
+
+void readInfoZero(int fd){
+
+	struct state_machine* st = create_state_machine("info");
+
+	unsigned char buffer[8];
+	bool flag = true;
+
+	bool toRead = true;
+
+	while(flag){
+	
+		// checks if it should keep on reading
+		if(toRead){
+			read(fd, buffer, 1);
+		}
+
+		message_handler(st);
+
+		switch(getCurrentState(st)){
+
+			case START:
+				if(*buffer == M_FLAG)
+					setCurrentEvent(st, FLAG);
+			break;
+
+			case FLAG_RCV:
+				if(*buffer == M_FLAG)
+					setCurrentEvent(st, FLAG);
+				else if(*buffer == M_A_REC)
+					setCurrentEvent(st, A);
+				else setCurrentEvent(st, OTHER);
+
+			break;
+
+			case A_RCV:
+				if(*buffer == M_FLAG)
+					setCurrentEvent(st, FLAG);
+				else if(*buffer == M_C_REC)
+					setCurrentEvent(st, C);
+				else setCurrentEvent(st, OTHER);
+
+			break;
+
+			case C_RCV:
+				if(*buffer == M_FLAG)
+					setCurrentEvent(st, FLAG);
+				else if(*buffer == 0x00)
+					setCurrentEvent(st, BCC_OK);
+				else setCurrentEvent(st, OTHER);
+
+			break;
+
+			case BCC_OK:
+				if(*buffer == M_FLAG){
+					setCurrentEvent(st, FLAG);
+					toRead = false;
+				}
+
+				else setCurrentEvent(st, OTHER);
+			
+			case DATA_REC:
+				if(*buffer == M_FLAG){
+					setCurrentEvent(st, FLAG);
+					toRead = false;
+				}
+
+
+			break;
+
+			case STOP_RCV:
+				flag = false;
+
+			break;
+		}
+
+	}
+
+}
+

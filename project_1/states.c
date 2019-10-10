@@ -11,14 +11,16 @@
 struct state_machine{
 	state current_state;
 	event current_event;
+	char* type;
 };
 
 struct state_machine stm;
-struct state_machine* create_state_machine()
+struct state_machine* create_state_machine(char * type)
 {
 	struct state_machine* st =  malloc(sizeof(stm));
 	st->current_state = START;
 	st->current_event = OTHER;
+	st->type = type;
 
 	return st;
 }
@@ -88,13 +90,24 @@ void message_handler(struct state_machine* st){
 
 
 		case BCC_OK:
+			if(strcmp(st->type, "set")){
+				if(st->current_event == FLAG)
+					st->current_state = STOP_RCV;
+
+				if(st->current_event == OTHER)
+					st->current_state = START;
+				}
+			else if(strcmp(st->type, "info")){
+				st->current_state = DATA_REC;
+			}
+			
+			break;
+		
+		case DATA_REC:
 			if(st->current_event == FLAG)
 				st->current_state = STOP_RCV;
+			
 
-			if(st->current_event == OTHER)
-				st->current_state = START;
-
-			break;
 	}
 	
 }
