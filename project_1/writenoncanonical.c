@@ -191,13 +191,14 @@ unsigned char * createsInfoMessage(){
 
 	buffer[1] = 0x03;
 
-	if(altenate == 0)
+	if(alternate == 0){
 		buffer[2] = 0x00;
-	else if(alternate == 1)
+		buffer[3] = 0x03^0x00;
+	}
+	else if(alternate == 1){
 		buffer[2] = 0x40;
-
-	buffer[3] = buffer[1]^buffer[2];
-
+		buffer[3] = 0x03^0x40;
+	}
 
 	if(alternate == 0)
 		alternate = 1;
