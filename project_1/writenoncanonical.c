@@ -22,6 +22,9 @@
 #define TRANSMITTER 0
 #define RECEIVER 1
 #define MAX_SIZE 255
+#define ESCAPE 0x7d
+#define ESCAPE_FLAG 0x5d
+#define FLAG_ESC 0x5e
 
 volatile int STOP=FALSE;
 
@@ -96,29 +99,36 @@ int main(int argc, char** argv)
 /* -------------------------------------------------------------------------------------------------------------*/
 /* -------------------------------------------------------------------------------------------------------------*/
 
-
-
-
 		if(llopen(fd,TRANSMITTER) < 0){
 			perror("could not establish connection");
 			exit(-1);
-	}
-	  //-------------------------------------
+		}
+	
+		sleep(1);
 
-
-
-	  //-------------------------------------
-
-	sleep(1);
     if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
       perror("tcsetattr");
       exit(-1);
     }
+
     close(fd);
     return 0;
 }
 
-//Funcoes Auxiliares
+
+
+
+
+
+
+
+
+
+/* -------------------------------------------------------------------------------------------------------------*/
+/* -------------------------------------------------------------------------------------------------------------*/
+/* -------------------------------------FUNÇÕES AUXILIARES------------------------------------------------------*/
+/* -------------------------------------------------------------------------------------------------------------*/
+/* -------------------------------------------------------------------------------------------------------------*/
 
 int llwrite(int fd, char * buffer, int length){
 	
@@ -127,7 +137,6 @@ int llwrite(int fd, char * buffer, int length){
 	while(not_done){
 	
 	unsigned char * message = createsInfoMessage();
-
 	index = fillsData(message,buffer, length,index);
 
 	/*
@@ -140,14 +149,9 @@ int llwrite(int fd, char * buffer, int length){
 
 	*/
 
-
 	if(index == (length -1))
 		not_done = false;
-
-
-	}
-	
-	
+	}	
 }
 
 
@@ -156,8 +160,6 @@ int llopen(int fd,int device){
 	if(device == TRANSMITTER){
 		
 		int success = 0;
-
-	
 
 		while(tries < 3){
 			alarm(3);
@@ -175,10 +177,10 @@ int llopen(int fd,int device){
 		printf("UA received. Connection estabilished \n\n");
 	
 		return fd;
-		}
+	}
 		
-		else
-			return -1;
+	else
+		return -1;
 }
 
 unsigned char * createsInfoMessage(){
@@ -217,22 +219,34 @@ int fillsData(unsigned char* message, char* buffer, int length, int index){
 	int i;
 	unsigned char bcc = buffer[index];
 
-	for(i = 4; i <= 253 ; i++){
-		message[i] = buffer[index];
+	for(i = 4; i <= 253 ;){
 
-		//para BCC2
-		if(i > 4)
-			bcc = bcc^message[i]; 
-
+		if(buffer[index] == M_FLAG){
+			message[i] = ESCAPE;
+			message[i+1] = FLAG_ESC;
+			i = i + 2;
+		}
+		else if(buffer[index] == ESCAPE){
+			message[i] = ESCAPE;
+			message[i+1] = ESCAPE_FLAG;
+			i = i + 2;
+		}
+		else{
+			message[i] = buffer[index];
+			i++;
+		}
+		
+		if(index == (length -1))// -1?	
+			break;
+				
 		index++;
-
-	if(index == (length -1)){// -1?
-		i++;		
-		break;
-		}		
-
 	}
-	message[i] = bcc;
+
+	for(i = 5; i <= 253 ;){
+		bcc = bcc^message[i]; 
+	}
+
+	message[i] = bcc; 
 	message[i+1] = M_FLAG;
 	return index;
 }
@@ -247,7 +261,7 @@ void sendSet(int fd){
 int readUa(int fd){
 
 
-	struct state_machine* st = create_state_machine();
+	struct state_machine* st = create_state_machine();//missing state machine type
 	unsigned char buffer[8];
 	bool flag = true;
 
