@@ -20,6 +20,9 @@
 #define TRUE 1
 #define TRANSMITTER 0
 #define RECEIVER 1
+#define ESCAPE 0x7d
+#define ESCAPE_FLAG 0x5d
+#define FLAG_ESC 0x5e
 
 volatile int STOP=FALSE;
 
@@ -27,6 +30,7 @@ void readSET(int fd);
 void sendUA(int fd);
 void readInfoZero(int fd);
 int llopen(int porta, int device);
+int llread(int fd, char * buffer);
 
 int main(int argc, char** argv)
 {
@@ -94,14 +98,15 @@ int main(int argc, char** argv)
 		exit(-2);
 	}
 	
-
-
-
-	//chamar llread
-
-
-
 	sleep(1);
+
+	printf("%d", 0);
+	//chamar llread num ciclo 
+	char * buffer;
+	llread(fd, buffer); 
+
+	printf("%s\n", buffer);
+
  	tcsetattr(fd,TCSANOW,&oldtio);
     close(fd);
     return 0;
@@ -277,6 +282,59 @@ void readInfoZero(int fd){
 			break;
 		}
 
+	}
+
+}
+
+
+int llread(int fd, char * buffer){
+
+	// se passar esta função a mensagem está certa
+	printf("1");
+	readInfoZero(fd);
+	printf("2");
+	char * msg;
+	char * msg_i;
+	bool flag = true;
+	int counter = 0;
+
+	int i = 0;
+	
+	while(flag){
+		
+		read(fd, msg, 1);
+		if(counter != 0 && counter != 1 && counter != 2 && counter != 3){
+			
+			if(msg[counter] == M_FLAG){
+				flag = false;
+			}
+			else{
+				msg_i[i] = msg[counter];
+				i++;
+			}
+			
+		}
+				
+		counter++;
+	}
+	
+	int j = 0;
+	for(unsigned int i = 0; i < strlen(msg_i); ){
+
+		if(msg_i[i] == ESCAPE && msg_i[i + 1] == FLAG_ESC){
+			buffer[j] = M_FLAG;
+			i = i + 2;
+		}
+		else if(msg_i[i] == ESCAPE && msg_i[i + 1] == ESCAPE_FLAG){
+			buffer[j] = ESCAPE;
+			i = i + 2;
+		}
+		else{
+			buffer[j] = msg_i[i];
+			i++;
+		}
+
+		j++;
 	}
 
 }
