@@ -104,8 +104,12 @@ void message_handler(struct state_machine* st){
 			break;
 		
 		case DATA_REC:
+			// alteracao aqui
 			if(st->current_event == FLAG)
 				st->current_state = STOP_RCV;
+			else if (st->current_event == OTHER){
+				st->current_state = DATA_REC;
+			}
 			
 
 	}

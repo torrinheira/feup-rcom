@@ -31,6 +31,8 @@ void sendUA(int fd);
 void readInfoZero(int fd);
 int llopen(int porta, int device);
 int llread(int fd, char * buffer);
+void destuffing(unsigned char * msg, unsigned char * final);
+void separate(int counter, unsigned char * msg, unsigned char * buffer);
 
 int main(int argc, char** argv)
 {
@@ -97,15 +99,15 @@ int main(int argc, char** argv)
 		perror("could not establish connection");
 		exit(-2);
 	}
-	
-	sleep(1);
 
-	printf("%d", 0);
+
+	sleep(2);
+
 	//chamar llread num ciclo 
 	char * buffer;
 	llread(fd, buffer); 
 
-	printf("%s\n", buffer);
+	//printf("%s\n", buffer);
 
  	tcsetattr(fd,TCSANOW,&oldtio);
     close(fd);
@@ -113,6 +115,7 @@ int main(int argc, char** argv)
 }
 
 int llopen(int fd, int device){
+	
 	if(device == RECEIVER){
 		
 		readSET(fd);
@@ -121,8 +124,13 @@ int llopen(int fd, int device){
 		printf("Sending UA ...\n");
 
 		sendUA(fd);
+		printf("UA sent\n");
+
+
 		return fd;
-	} else return -1;
+	} 
+	else 
+		return -1;
 }
 
 // Reads SET from writenoncanonical.c
@@ -134,7 +142,8 @@ void readSET(int fd){
 	bool flag = true;
 
 	bool toRead = true;
-
+	
+	
 	while(flag){
 	
 		// checks if it should keep on reading
@@ -203,7 +212,7 @@ void sendUA(int fd){
 
 	unsigned char message[5] = {0x7e, 0x01, 0x07, 0x01 ^ 0x07, 0x7e};
 	write(fd, message, 5);
-	printf("UA sent\n");
+	
 }
 
 
@@ -220,9 +229,9 @@ void readInfoZero(int fd){
 	
 		// checks if it should keep on reading
 		if(toRead){
-			read(fd, buffer, 1);
+			read(fd, buffer, 1);			
 		}
-
+		
 		message_handler(st);
 
 		switch(getCurrentState(st)){
@@ -244,7 +253,7 @@ void readInfoZero(int fd){
 			case A_RCV:
 				if(*buffer == M_FLAG)
 					setCurrentEvent(st, FLAG);
-				else if(*buffer == M_C_REC)
+				else if(/**buffer == M_C_REC*/*buffer == 0x00 || *buffer == 0x40)
 					setCurrentEvent(st, C);
 				else setCurrentEvent(st, OTHER);
 
@@ -253,8 +262,10 @@ void readInfoZero(int fd){
 			case C_RCV:
 				if(*buffer == M_FLAG)
 					setCurrentEvent(st, FLAG);
-				else if(*buffer == 0x00)
+				else if(*buffer == 0x03 || *buffer == 0x43){
+					toRead=false;
 					setCurrentEvent(st, BCC_OK);
+				}
 				else setCurrentEvent(st, OTHER);
 
 			break;
@@ -265,18 +276,26 @@ void readInfoZero(int fd){
 					toRead = false;
 				}
 
-				else setCurrentEvent(st, OTHER);
-			
+				else 
+					setCurrentEvent(st, OTHER);
+				
 			case DATA_REC:
+				/*
 				if(*buffer == M_FLAG){
 					setCurrentEvent(st, FLAG);
 					toRead = false;
 				}
+				*/
+				
+				//setCurrentEvent(st, OTHER);
+				flag = false;
+				toRead= false;
 
 
 			break;
 
 			case STOP_RCV:
+				printf("STOP_RCV\n");
 				flag = false;
 
 			break;
@@ -289,53 +308,91 @@ void readInfoZero(int fd){
 
 int llread(int fd, char * buffer){
 
-	// se passar esta função a mensagem está certa
-	printf("1");
+	// se passar esta função a trama inicial está certa
+	unsigned char msg[255]; 
 	readInfoZero(fd);
-	printf("2");
-	char * msg;
-	char * msg_i;
+	unsigned char *msg_pointer = msg; 
+	
+	// supostamente no fd agora tem apenas o chunk de dados e as flags de terminação
+	
+	
 	bool flag = true;
 	int counter = 0;
-
-	int i = 0;
-	
 	while(flag){
 		
-		read(fd, msg, 1);
-		if(counter != 0 && counter != 1 && counter != 2 && counter != 3){
-			
-			if(msg[counter] == M_FLAG){
-				flag = false;
-			}
-			else{
-				msg_i[i] = msg[counter];
-				i++;
-			}
-			
+		
+		read(fd, msg_pointer, 1);
+		
+		
+		if(msg[counter] != 0x7e){
+			counter++;
 		}
-				
-		counter++;
+		else{
+			flag = false;
+		}
+		msg_pointer++;
+		
 	}
 	
-	int j = 0;
-	for(unsigned int i = 0; i < strlen(msg_i); ){
+	
+	char bcc2 = msg[counter - 1];
+	
+	
+	// separar a mensagem da trama final, o buf fica com a informacao isolada
+	unsigned char buf[255];
+	unsigned char *buf_pointer = buf;
+	separate(counter, msg, buf_pointer);
+	
+	 
+	
+	
+	
+	//dar destuffing ao msg e verificar se o BCC2 e a FLAG estao corretas
+	unsigned char * final[255];
+	destuffing(buf, final);
+	printf("%s\n", final);
+	
+	
+	//enviar acknowledge
+	
 
-		if(msg_i[i] == ESCAPE && msg_i[i + 1] == FLAG_ESC){
-			buffer[j] = M_FLAG;
+}
+
+void destuffing(unsigned char * msg, unsigned char * final){
+	
+	int j = 0;
+	for(unsigned int i = 0; i < strlen(msg); ){
+
+		if(msg[i] == ESCAPE && msg[i + 1] == FLAG_ESC){
+			final[j] = M_FLAG;
 			i = i + 2;
 		}
-		else if(msg_i[i] == ESCAPE && msg_i[i + 1] == ESCAPE_FLAG){
-			buffer[j] = ESCAPE;
+		else if(msg[i] == ESCAPE && msg[i + 1] == ESCAPE_FLAG){
+			final[j] = ESCAPE;
 			i = i + 2;
 		}
 		else{
-			buffer[j] = msg_i[i];
+			final[j] = msg[i];
 			i++;
 		}
 
 		j++;
 	}
-
+	
 }
 
+void separate(int counter, unsigned char * msg, unsigned char * buffer){
+
+	
+	for(unsigned int i = 1; i < counter; i++){
+		
+		if(msg[i] != M_FLAG){
+			buffer[i - 1] = msg[i - 1];
+		}
+		else{
+			break;
+		}
+		
+	}
+	
+}
