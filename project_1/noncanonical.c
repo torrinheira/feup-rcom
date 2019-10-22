@@ -24,6 +24,11 @@
 #define ESCAPE_FLAG 0x5d
 #define FLAG_ESC 0x5e
 
+#define RR0 0x05
+#define RR1 0x85
+#define REJ0 0x01
+#define REJ1 0x81
+
 volatile int STOP=FALSE;
 
 void readSET(int fd);
@@ -34,6 +39,8 @@ int llread(int fd, char * buffer);
 void destuffing(unsigned char * msg, unsigned char * final);
 void separate(int counter, unsigned char * msg, unsigned char * buffer);
 
+int m_bit;
+
 int main(int argc, char** argv)
 {
 
@@ -41,7 +48,7 @@ int main(int argc, char** argv)
     struct termios oldtio,newtio;
     char buf[255];
 	char buf_m[255];
-	
+
     if ( (argc < 2) ||
   	     ((strcmp("/dev/ttyS0", argv[1])!=0) &&
   	      (strcmp("/dev/ttyS1", argv[1])!=0) )) {
@@ -86,7 +93,7 @@ int main(int argc, char** argv)
 
 
     tcflush(fd, TCIOFLUSH);
-    
+
 
     if ( tcsetattr(fd,TCSANOW,&newtio) == -1) {
       perror("tcsetattr");
@@ -103,9 +110,9 @@ int main(int argc, char** argv)
 
 	sleep(2);
 
-	//chamar llread num ciclo 
+	//chamar llread num ciclo
 	char * buffer;
-	llread(fd, buffer); 
+	llread(fd, buffer);
 
 	//printf("%s\n", buffer);
 
@@ -115,9 +122,9 @@ int main(int argc, char** argv)
 }
 
 int llopen(int fd, int device){
-	
+
 	if(device == RECEIVER){
-		
+
 		readSET(fd);
 
 		printf("SET received, everything is OK\n");
@@ -128,8 +135,8 @@ int llopen(int fd, int device){
 
 
 		return fd;
-	} 
-	else 
+	}
+	else
 		return -1;
 }
 
@@ -142,10 +149,10 @@ void readSET(int fd){
 	bool flag = true;
 
 	bool toRead = true;
-	
-	
+
+
 	while(flag){
-	
+
 		// checks if it should keep on reading
 		if(toRead){
 			read(fd, buffer, 1);
@@ -212,7 +219,7 @@ void sendUA(int fd){
 
 	unsigned char message[5] = {0x7e, 0x01, 0x07, 0x01 ^ 0x07, 0x7e};
 	write(fd, message, 5);
-	
+
 }
 
 
@@ -226,12 +233,12 @@ void readInfoZero(int fd){
 	bool toRead = true;
 
 	while(flag){
-	
+
 		// checks if it should keep on reading
 		if(toRead){
-			read(fd, buffer, 1);			
+			read(fd, buffer, 1);
 		}
-		
+
 		message_handler(st);
 
 		switch(getCurrentState(st)){
@@ -253,8 +260,17 @@ void readInfoZero(int fd){
 			case A_RCV:
 				if(*buffer == M_FLAG)
 					setCurrentEvent(st, FLAG);
-				else if(/**buffer == M_C_REC*/*buffer == 0x00 || *buffer == 0x40)
+				else if(/**buffer == M_C_REC*/*buffer == 0x00 || *buffer == 0x40){
+          // here we take the desired bit from C flag to be then used in the R acknowledge
+          if(*buffer == 0x00){
+            m_bit = 0;
+          }
+          else if(*buffer == 0x40){
+            m_bit = 1;
+          }
+
 					setCurrentEvent(st, C);
+        }
 				else setCurrentEvent(st, OTHER);
 
 			break;
@@ -276,9 +292,9 @@ void readInfoZero(int fd){
 					toRead = false;
 				}
 
-				else 
+				else
 					setCurrentEvent(st, OTHER);
-				
+
 			case DATA_REC:
 				/*
 				if(*buffer == M_FLAG){
@@ -286,7 +302,7 @@ void readInfoZero(int fd){
 					toRead = false;
 				}
 				*/
-				
+
 				//setCurrentEvent(st, OTHER);
 				flag = false;
 				toRead= false;
@@ -309,21 +325,19 @@ void readInfoZero(int fd){
 int llread(int fd, char * buffer){
 
 	// se passar esta função a trama inicial está certa
-	unsigned char msg[255]; 
+	unsigned char msg[255];
 	readInfoZero(fd);
-	unsigned char *msg_pointer = msg; 
-	
+	unsigned char *msg_pointer = msg;
+
 	// supostamente no fd agora tem apenas o chunk de dados e as flags de terminação
-	
-	
+
+
 	bool flag = true;
 	int counter = 0;
 	while(flag){
-		
-		
+
 		read(fd, msg_pointer, 1);
-		
-		
+
 		if(msg[counter] != 0x7e){
 			counter++;
 		}
@@ -331,35 +345,78 @@ int llread(int fd, char * buffer){
 			flag = false;
 		}
 		msg_pointer++;
-		
+
 	}
-	
-	
+
+
 	char bcc2 = msg[counter - 1];
-	
-	
+  printf("%c\n", bcc2);
+
+
 	// separar a mensagem da trama final, o buf fica com a informacao isolada
 	unsigned char buf[255];
 	unsigned char *buf_pointer = buf;
 	separate(counter, msg, buf_pointer);
-	
-	 
-	
-	
-	
-	//dar destuffing ao msg e verificar se o BCC2 e a FLAG estao corretas
-	unsigned char * final[255];
+
+
+
+	// dar destuffing ao msg e verificar se o BCC2 e a FLAG estao corretas
+	unsigned char final_msg[255];
+  unsigned char *final = final_msg;
 	destuffing(buf, final);
 	printf("%s\n", final);
-	
-	
-	//enviar acknowledge
-	
+
+
+  // calcular bcc2 da mensagem obtida para mais tarde comparar com o bcc2 recebido
+  char bcc2_comp = final[0];
+  for(int k = 1; k < strlen(final); k++){
+    bcc2_comp = bcc2_comp ^ final[k];
+  }
+  printf("%c\n", bcc2_comp);
+
+	// enviar acknowledge
+  tcflush(fd, TCIOFLUSH);
+
+  /*
+  unsigned char ack[5] = {M_FLAG, M_A_REC, RR1, M_A_REC ^ RR1, M_FLAG };
+  unsigned char *ack_pointer = ack;
+  */
+
+  if(bcc2 == bcc2_comp){
+
+    printf("acknowledged\n");
+    printf("%d\n", m_bit);
+    if(m_bit == 0){
+      unsigned char ack[5] = {M_FLAG, M_A_REC, RR1, M_A_REC ^ RR1, M_FLAG };
+      printf("%s\n", ack);
+      write(fd, ack, 5);
+    }
+    else if(m_bit == 1){
+      unsigned char ack[5] = {M_FLAG, M_A_REC, RR0, M_A_REC ^ RR0, M_FLAG };
+      unsigned char *ack_pointer = ack;
+      printf("%s\n", ack);
+      write(fd, ack, 5);
+    }
+
+  }
+  else{
+    printf("%d\n", m_bit);
+    if(m_bit == 0){
+      unsigned char ack[5] = {M_FLAG, M_A_REC, REJ1, M_A_REC ^ REJ1, M_FLAG };
+      write(fd, ack, 5);
+    }
+    else if(m_bit == 1){
+      unsigned char ack[5] = {M_FLAG, M_A_REC, REJ0, M_A_REC ^ REJ0, M_FLAG };
+      write(fd, ack, 5);
+    }
+  }
+
+
 
 }
 
 void destuffing(unsigned char * msg, unsigned char * final){
-	
+
 	int j = 0;
 	for(unsigned int i = 0; i < strlen(msg); ){
 
@@ -378,21 +435,21 @@ void destuffing(unsigned char * msg, unsigned char * final){
 
 		j++;
 	}
-	
+
 }
 
 void separate(int counter, unsigned char * msg, unsigned char * buffer){
 
-	
+
 	for(unsigned int i = 1; i < counter; i++){
-		
+
 		if(msg[i] != M_FLAG){
 			buffer[i - 1] = msg[i - 1];
 		}
 		else{
 			break;
 		}
-		
+
 	}
-	
+
 }
