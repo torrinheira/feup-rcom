@@ -1,3 +1,5 @@
+#pragma once
+
 #define BAUDRATE B9600
 #define MODEMDEVICE "/dev/ttyS0"
 #define _POSIX_SOURCE 1 /* POSIX compliant source */
@@ -11,7 +13,7 @@
 #define DISC 0x0B
 #define TRANSMITTER 0
 #define RECEIVER 1
-#define MAX_SIZE 255
+#define MAX_SIZE 256
 #define ESCAPE 0x7d
 #define ESCAPE_FLAG 0x5d
 #define FLAG_ESC 0x5e
@@ -19,7 +21,14 @@
 #define ACCEPTED 1		//ACK sent correctly
 #define REJECTED -1		//ACK wrong
 #define _POSIX_SOURCE 1 /* POSIX compliant source */
+
+
+
 #define RR0 0x05
 #define RR1 0x85
 #define REJ0 0x01
 #define REJ1 0x81
+
+
+#define START 0x02
+#define END 0x03

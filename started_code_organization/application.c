@@ -10,6 +10,7 @@
 #include "flags.h"
 #include "noncanonical.c"
 #include "writenoncanonical.c"
+#include "aux_func.h"
 
 //a função main será exclusiva e estará presente neste mesmo ficheiro
 int main(int argc, char** argv){
@@ -101,6 +102,31 @@ int comunication_type;
             perror("could not establish connection\n");
 		    exit(-1);
         }
+
+        char buffer[MAX_SIZE];
+        int name_size, file_size;
+        unsigned char* control_packet_start, control_packet_end;
+        int type_control_packet;
+        int packet_size;
+
+        name_size = strlen(argv[3]);
+        file_size = calculate_file_size(file);
+
+        //control_packet - inicio de transmissão
+        type_control_packet = START;
+        control_packet_start = create_packet(name_size,argv[3],file_size,type_control_packet,&packet_size);
+
+        //enviar control_packet  (NOTA: a única coisa que varia no control_packet END e START é valor de C)
+        llwrite(fd,control_packet_start,packet_size);
+
+        //mandar dados
+
+        //mandar control_package de final
+        packet_size = 0;
+        type_control_packet = END;
+        control_packet_start = create_packet(name_size,argv[3],file_size,type_control_packet,&packet_size);
+        llwrite(fd,control_packet_end,packet_size);
+        
     }
     else if(comunication_type == RECEIVER){
         if(llopen(fd, RECEIVER) < 0){
@@ -118,9 +144,12 @@ int comunication_type;
 
 
 
-/*----------------------------------------------------------------------------------------------------------------------------------------------*/
+/*------------------------------------------------------------ TERMINAÇÃO DA APLICAÇÃO ----------------------------------------------------------------------------------*/
 
-     if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
+
+    llclose(fd, comunication_type);
+
+    if ( tcsetattr(fd,TCSANOW,&oldtio) == -1) {
         perror("tcsetattr");
         exit(-1);
     }
