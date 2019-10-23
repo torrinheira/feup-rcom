@@ -8,9 +8,8 @@
 #include <signal.h>
 
 #include "flags.h"
-#include "noncanonical.c"
-#include "writenoncanonical.c"
-#include "aux_func.h"
+#include "protocolo.h"
+#include "auxiliar.h"
 
 //a função main será exclusiva e estará presente neste mesmo ficheiro
 int main(int argc, char** argv){
