@@ -67,8 +67,20 @@ unsigned char* control_packet(int name_size, char* file_name, int file_size, int
 
 
 
-int data_packet(){
+int data_packet(int fd, int packages_sent, int length, char* buffer){
 
-    
+    int size = length + 4;
+    unsigned char* data_package =( char*) malloc(size);
+    data_package[0] = 0x00;
+    data_package[1] = (char) packages_sent;
+    data_package[2] = (char) packages_sent / 256;
+    data_package[3] = (char) packages_sent % 256;
+
+    for(size_t i = 0 ; i < length ; i++ ){
+		data_package[i+4] = buffer[i];
+	}
+
+    llwrite(fd,data_package,length);
+    free(data_package);
     return 1;
 }

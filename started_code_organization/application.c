@@ -122,13 +122,17 @@ int comunication_type;
         //mandar dados
         //até ter bytes para ler, devemos ler o ficheiro, sempre em pacotes de 256 bytes
         int bytes_written = 0, bytes_read;
+        int packages_sent = 1;
 
         while((bytes_read = fread(buffer, sizeof(char),MAX_SIZE, file)) > 0){
             //enviar os pedaços de dados dentro de data_packages
+            data_packet(fd,packages_sent,bytes_read,buffer);
+            packages_sent++;
 
+            bytes_written= bytes_written + bytes_read;
         }
 
-
+        fclose(file);
         
 
         //mandar control_package de final
