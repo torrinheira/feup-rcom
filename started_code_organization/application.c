@@ -120,6 +120,16 @@ int comunication_type;
         llwrite(fd,control_packet_start,packet_size);
 
         //mandar dados
+        //até ter bytes para ler, devemos ler o ficheiro, sempre em pacotes de 256 bytes
+        int bytes_written = 0, bytes_read;
+
+        while((bytes_read = fread(buffer, sizeof(char),MAX_SIZE, file)) > 0){
+            //enviar os pedaços de dados dentro de data_packages
+
+        }
+
+
+        
 
         //mandar control_package de final
         packet_size = 0;

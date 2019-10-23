@@ -54,8 +54,8 @@ unsigned char* control_packet(int name_size, char* file_name, int file_size, int
         control_frame[index++] = file_name[j];
     }
 
-    control_frame[index++] = 0x00;
-    control_frame[index++] = name_size;
+    control_frame[index++] = 0x01;
+    control_frame[index++] = file_size;
 
     //ciclo para preencher V1
     for(size_t j = 0; j < strlen(fileBuffer) ;j++){
@@ -63,4 +63,12 @@ unsigned char* control_packet(int name_size, char* file_name, int file_size, int
     }
 
     return control_frame;
+}
+
+
+
+int data_packet(){
+
+    
+    return 1;
 }

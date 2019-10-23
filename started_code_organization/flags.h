@@ -32,3 +32,4 @@
 
 #define START 0x02
 #define END 0x03
+#define DATA 0x01
