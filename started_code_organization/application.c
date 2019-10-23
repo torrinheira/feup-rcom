@@ -8,6 +8,8 @@
 #include <signal.h>
 
 #include "flags.h"
+#include "noncanonical.c"
+#include "writenoncanonical.c"
 
 //a função main será exclusiva e estará presente neste mesmo ficheiro
 int main(int argc, char** argv){
@@ -91,6 +93,25 @@ int comunication_type;
     }
 
 /* llopen para estabelecer ligaçoes */
+/* depende do tipo, transmitter or receiver*/
+
+
+    if(comunication_type == TRANSMITTER){
+        if(llopen(fd,TRANSMITTER) < 0){
+            perror("could not establish connection\n");
+		    exit(-1);
+        }
+    }
+    else if(comunication_type == RECEIVER){
+        if(llopen(fd, RECEIVER) < 0){
+		    perror("could not establish connection\n");
+		    exit(-2);
+	    }
+    }
+    else{
+        printf("unrecognized type of communication\n");
+        exit(1);
+    }
 
 
 
