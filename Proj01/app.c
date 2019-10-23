@@ -125,8 +125,8 @@ int comunication_type;
 
         while((bytes_read = fread(buffer, sizeof(char),MAX_SIZE, file)) > 0){
             //enviar os pedaços de dados dentro de data_packages
-            data_packet(fd,packages_sent,bytes_read,buffer);
-            packages_sent++;
+            data_packet(fd,packages_sent,bytes_read,buffer);                    // Por algures stuffed and then llwrite()
+            packages_sent++;                                                    // data_packet() == header() ??
 
             bytes_written= bytes_written + bytes_read;
         }
@@ -146,6 +146,8 @@ int comunication_type;
 		    perror("could not establish connection\n");
 		    exit(-2);
 	    }
+
+        
     }
     else{
         printf("unrecognized type of communication\n");
