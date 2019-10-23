@@ -1,5 +1,6 @@
-#include "aux_func.h"
+#include "auxiliar.h"
 #include "flags.h"
+#include "protocolo.h"
 
 //function found @stackoverflow
 int calculate_size_file(FILE* file){
@@ -46,7 +47,7 @@ unsigned char* control_packet(int name_size, char* file_name, int file_size, int
     }
 
     //preenche T1 e L1
-    control_frame[index++] = 0x00;
+    control_frame[index++] = 0x01;
     control_frame[index++] = name_size;
 
     //ciclo para preencher V1
@@ -54,7 +55,7 @@ unsigned char* control_packet(int name_size, char* file_name, int file_size, int
         control_frame[index++] = file_name[j];
     }
 
-    control_frame[index++] = 0x01;
+    control_frame[index++] = 0x00;
     control_frame[index++] = file_size;
 
     //ciclo para preencher V1
@@ -67,7 +68,7 @@ unsigned char* control_packet(int name_size, char* file_name, int file_size, int
 
 
 
-int data_packet(int fd, int packages_sent, int length, char* buffer){
+char* data_packet(int fd, int packages_sent, int length, char* buffer){
 
     int size = length + 4;
     unsigned char* data_package =( char*) malloc(size);
@@ -80,7 +81,37 @@ int data_packet(int fd, int packages_sent, int length, char* buffer){
 		data_package[i+4] = buffer[i];
 	}
 
-    llwrite(fd,data_package,length);
-    free(data_package);
-    return 1;
+    // llwrite(fd,data_package,length);
+    // free(data_package);
+    return data_package;
+}
+
+char* get_info(char* control_p, int* file_size){
+
+    if(control_p[0] == END){
+        printf("END packet received\n");
+        return NULL;
+        // TO DO
+    }
+    else if(control_p[0] == START){        // received filename and file size
+
+        int filename_size = control_p[2];
+        char *filename = malloc(500);
+        for(int i = 0 ; i < filename_size ; i++ ){
+		    filename[i] = control_p[3 + i];
+	    }
+
+        int size_pos = 4+control_p[2];
+        char* size = malloc(control_p[2]);
+        for(int i = 0; i < control_p[size_pos]; i++){
+            size[i] = control_p[size_pos + 1 + i];
+        }
+
+        *file_size = atoi(size);
+        return filename;
+
+
+    }
+
+
 }

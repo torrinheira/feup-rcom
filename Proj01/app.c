@@ -70,7 +70,7 @@ int comunication_type;
 	}
 
 
-    if(argv[2] == "sender"){
+    if(strcmp(argv[2], "sender") == 0){
         comunication_type = TRANSMITTER;
         if(argc != 4){
             printf("Must be specified a file path to transmit\n");
@@ -84,7 +84,7 @@ int comunication_type;
             }
         }
     }
-    else if(argv[2] == "receiver"){
+    else if(strcmp(argv[2], "receiver") == 0){
         comunication_type = RECEIVER;
     }
     else{
@@ -102,6 +102,8 @@ int comunication_type;
 		    exit(-1);
         }
 
+
+
         char buffer[MAX_SIZE];
         int name_size, file_size;
         unsigned char* control_packet_start, control_packet_end;
@@ -109,14 +111,19 @@ int comunication_type;
         int packet_size;
 
         name_size = strlen(argv[3]);
-        file_size = calculate_file_size(file);
+        file_size = calculate_size_file(file);
 
         //control_packet - inicio de transmissão
         type_control_packet = START;
-        control_packet_start = create_packet(name_size,argv[3],file_size,type_control_packet,&packet_size);
+        control_packet_start = control_packet(name_size,argv[3],file_size,type_control_packet,&packet_size);
+
+
 
         //enviar control_packet  (NOTA: a única coisa que varia no control_packet END e START é valor de C)
-        llwrite(fd,control_packet_start,packet_size);
+        char c_p_s[256];
+        control_packet_start = c_p_s;
+        printf("%s\n", control_packet_start);
+        llwrite(fd,c_p_s,packet_size);
 
         //mandar dados
         //até ter bytes para ler, devemos ler o ficheiro, sempre em pacotes de 256 bytes
@@ -124,9 +131,15 @@ int comunication_type;
         int packages_sent = 1;
 
         while((bytes_read = fread(buffer, sizeof(char),MAX_SIZE, file)) > 0){
+            
             //enviar os pedaços de dados dentro de data_packages
-            data_packet(fd,packages_sent,bytes_read,buffer);                    // Por algures stuffed and then llwrite()
-            packages_sent++;                                                    // data_packet() == header() ??
+            char *data_package = data_packet(fd,packages_sent,bytes_read,buffer);                    
+            char *stuffed_message = stuffing(data_package, &bytes_read);
+
+            // puts the stuffed message in the information trama
+            llwrite(fd, stuffed_message, bytes_read);
+            
+            packages_sent++;                                                                       
 
             bytes_written= bytes_written + bytes_read;
         }
@@ -137,15 +150,45 @@ int comunication_type;
         //mandar control_package de final
         packet_size = 0;
         type_control_packet = END;
-        control_packet_start = create_packet(name_size,argv[3],file_size,type_control_packet,&packet_size);
+        control_packet_start = control_packet(name_size,argv[3],file_size,type_control_packet,&packet_size);
         llwrite(fd,control_packet_end,packet_size);
         
     }
     else if(comunication_type == RECEIVER){
+        
+        // establishes connection
         if(llopen(fd, RECEIVER) < 0){
 		    perror("could not establish connection\n");
 		    exit(-2);
 	    }
+
+
+        // receives the control package and saves the file name and its size
+        int control_flag = 1;
+        int length;
+        char control_p[500];
+        char* file_name;
+        int file_size = 0;
+
+        while(control_flag){
+
+            length = llread(fd, control_p);
+
+            file_name = get_info(control_p, &file_size);
+            if(file_name != NULL){
+					printf("File Name: %s\nFile Size: %d\n", file_name, file_size);
+					send_RR(fd);
+					file=fopen(file_name, "wb");	
+					control_flag = 0;
+				}
+				else
+					send_REJ(fd);
+
+
+        }
+
+        //parser do pacote de dados
+        
 
         
     }

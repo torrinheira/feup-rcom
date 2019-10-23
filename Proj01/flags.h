@@ -11,8 +11,8 @@
 #define M_C_SND 0x07
 #define M_C_REC 0x03
 #define DISC 0x0B
-#define TRANSMITTER 0
-#define RECEIVER 1
+#define TRANSMITTER 1
+#define RECEIVER 0
 #define MAX_SIZE 256
 #define ESCAPE 0x7d
 #define ESCAPE_FLAG 0x5d

@@ -25,8 +25,8 @@
 #define DISC 0x0B
 #define UA 0x07
 #define SET 0x03
-#define TRANSMITTER 0
-#define RECEIVER 1
+#define TRANSMITTER 1
+#define RECEIVER 0
 #define MAX_SIZE 255
 #define ESCAPE 0x7d
 #define ESCAPE_FLAG 0x5d
@@ -69,9 +69,13 @@ void send_SET(int fd);
 
 void send_RR(int fd);
 
-char* stuffing(char* payload, int* length);
+void send_REJ(int fd);
+
+char* stuffing(char* data_package, int* length);
 
 char* destuffing(char* msg, int* length);
 
 char* verify_bcc2(char* control_message, int *length);
+
+
 

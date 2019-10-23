@@ -130,10 +130,12 @@ int llwrite(int fd, char *buffer, int length)
     trama[3] = trama[1] ^ trama[2];
     trama[length + 4] = M_FLAG;
 
+
     for (i = 4; i < length + 4; i++)
     {
         trama[i] = buffer[i - 4];
     }
+
 
     //ESPERAR PELO ACK
     (void)signal(SIGALRM, timeOut);
@@ -152,6 +154,7 @@ int llwrite(int fd, char *buffer, int length)
         {
 
             read(fd, &byte, 1);
+            printf("state: %d\n", state);
 
             switch (state){
                 case 0:
@@ -534,7 +537,7 @@ void send_RR(int fd)
     fflush(NULL);
 }
 
-char *stuffing(char *payload, int *length){
+char *stuffing(char *data_package, int *length){
 
     char *str;
     char *aux;
@@ -547,8 +550,8 @@ char *stuffing(char *payload, int *length){
 
     for (i = 0, j = 0; i < *length; i++, j++)
     {
-        BCC2 ^= payload[i];
-        aux[i] = payload[i];
+        BCC2 ^= data_package[i];
+        aux[i] = data_package[i];
     }
 
     aux = (char *)realloc(aux, (*length) + 1);
@@ -557,12 +560,12 @@ char *stuffing(char *payload, int *length){
     for (i = 0, j = 0; i < *length + 1; i++, j++)
     {
 
-        if (aux[i] == M_FLAG){ //replacing flag
+        if (aux[i] == M_FLAG){      //replacing flag
             str[j] = 0x7d;
             str[j + 1] = 0x5e;
             j++;
         }
-        else if (aux[i] == 0x7d){ //replacing flag replacer
+        else if (aux[i] == 0x7d){   //replacing flag replacer
             str[j] = 0x7d;
             str[j + 1] = 0x5d;
             j++;
