@@ -28,90 +28,120 @@ int calculate_size_file(FILE* file){
 }
 
 //parametros importantes a passar para que o reader tenha informação: nome do ficheiro e tamanho a do mesmo
-unsigned char* control_packet(int name_size, char* file_name, int file_size, int type_control_packet,int *packet_size){
+char *control_frame(char *filename, FILE *file, int start, int *frame_size){
 
-    char fileBuffer[100];
-	sprintf(fileBuffer, "%d", file_size);
-    
-    *packet_size = 5 + strlen(fileBuffer) + name_size; //5 é o C, T1, L1, T2 E L2, o filze_size e name_size será importante para o V
-    int index = 0;
+    int file_name_size = strlen(filename);
+    int file_size = calculate_size_file(file); //Get file size
+    if (start)
+        printf("\nFile size = %d bytes\n\n", file_size);
+    int i = 0;
+    char file_size_in_string[30];
+    sprintf(file_size_in_string, "%d", file_size);
 
-    unsigned char control_frame[*packet_size];
+    *frame_size = 5 + file_name_size + strlen(file_size_in_string);
+    char *control_frame = malloc(*frame_size);
 
+    if (start)
+        control_frame[i++] = START;
+    else
+        control_frame[i++] = END;
 
-    if(type_control_packet == START){
-        control_frame[index] = START;
+    control_frame[i++] = 0x00;
+    control_frame[i++] = (char)strlen(file_size_in_string);
+
+    for (; i < strlen(file_size_in_string) + 3; i++){
+
+        control_frame[i] = file_size_in_string[i - 3];
     }
-    else if(type_control_packet == END){
-        control_frame[index] = END;
-    }
 
-    //preenche T1 e L1
-    control_frame[index++] = 0x01;
-    control_frame[index++] = name_size;
+    control_frame[i++] = 0x01;
+    control_frame[i++] = (char)file_name_size;
 
-    //ciclo para preencher V1
-    for(size_t j = 0; j < name_size ;j++){
-        control_frame[index++] = file_name[j];
-    }
+    int j;
+    for (j = i; i < file_name_size + j; i++)
+    {
 
-    control_frame[index++] = 0x00;
-    control_frame[index++] = file_size;
-
-    //ciclo para preencher V1
-    for(size_t j = 0; j < strlen(fileBuffer) ;j++){
-        control_frame[index++] = fileBuffer[j];
+        control_frame[i] = filename[i - j];
     }
 
     return control_frame;
 }
 
+char* data_packet(int packages_sent, int *length, char* buffer){
 
-
-char* data_packet(int fd, int packages_sent, int length, char* buffer){
-
-    int size = length + 4;
+    int size = *length + 4;
     unsigned char* data_package =( char*) malloc(size);
     data_package[0] = 0x00;
     data_package[1] = (char) packages_sent;
-    data_package[2] = (char) packages_sent / 256;
-    data_package[3] = (char) packages_sent % 256;
+    data_package[2] = (char) (*length) / 256;
+    data_package[3] = (char) (*length) % 256;
 
-    for(size_t i = 0 ; i < length ; i++ ){
+    for(size_t i = 0 ; i < *length ; i++ ){
 		data_package[i+4] = buffer[i];
 	}
 
     // llwrite(fd,data_package,length);
     // free(data_package);
+    *length = *length + 4;
     return data_package;
 }
 
-char* get_info(char* control_p, int* file_size){
 
-    if(control_p[0] == END){
-        printf("END packet received\n");
+char* rem_data_packet(char* buffer, int* length){
+
+    int size = 2 * (*length);
+    char* tmp = malloc(size);
+
+    for(int i = 0; i < *length - 4; i++){
+        tmp[i] = buffer[i + 4];
+    }
+
+    *length = *length - 4;
+    return tmp;
+
+}
+
+
+char *get_info(char *control, int *file_size)
+{
+
+    if (control[0] != START)
         return NULL;
-        // TO DO
-    }
-    else if(control_p[0] == START){        // received filename and file size
+    int pos = 4 + control[2];
+    int filename_size = control[4 + control[2]];
 
-        int filename_size = control_p[2];
-        char *filename = malloc(500);
-        for(int i = 0 ; i < filename_size ; i++ ){
-		    filename[i] = control_p[3 + i];
-	    }
+    char *buffer = malloc(100);
 
-        int size_pos = 4+control_p[2];
-        char* size = malloc(control_p[2]);
-        for(int i = 0; i < control_p[size_pos]; i++){
-            size[i] = control_p[size_pos + 1 + i];
-        }
+    char *size = malloc(control[2]);
+    int i;
 
-        *file_size = atoi(size);
-        return filename;
-
-
+    for (i = 0; i < filename_size; i++)
+    {
+        buffer[i] = control[pos + 1 + i];
     }
 
+    for (i = 0; i < control[2]; i++)
+        size[i] = control[i + 3];
 
+    *file_size = atoi(size);
+    return buffer;
+}
+
+int getFileSize(FILE *file){
+
+    printf("desobrimos?\n");
+    int currentPosition = ftell(file);
+
+    printf("sera aqui?\n");
+    if (fseek(file, 0, SEEK_END) == -1)
+    {
+        printf("ERROR: Could not get file size.\n");
+        return -1;
+    }
+
+    int size = ftell(file);
+
+    fseek(file, 0, currentPosition);
+
+    return size;
 }

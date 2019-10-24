@@ -27,7 +27,6 @@
 #define SET 0x03
 #define TRANSMITTER 1
 #define RECEIVER 0
-#define MAX_SIZE 255
 #define ESCAPE 0x7d
 #define ESCAPE_FLAG 0x5d
 #define FLAG_ESC 0x5e

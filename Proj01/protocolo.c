@@ -58,7 +58,6 @@ int llopen(int fd, int com_type)
                     state = 2;
                 else if (byte == M_FLAG){
                     state = 1;
-                    printf("%c\n", byte);
                 }
                 else
                     state = 0;
@@ -110,8 +109,8 @@ int llwrite(int fd, char *buffer, int length)
     fflush(NULL);
     timeout = 0;
     char *trama = malloc((length + 5) * sizeof(char));
-    char controlo;
-    char byte;
+    unsigned char controlo;
+    unsigned char byte;
     int i, written, state = 0;
 
     if (alternate == 0){
@@ -136,25 +135,29 @@ int llwrite(int fd, char *buffer, int length)
         trama[i] = buffer[i - 4];
     }
 
+    if(controlo == RR0) // expects the opposite bit on RR
+        controlo = RR1;
+    else controlo = RR0;
 
     //ESPERAR PELO ACK
     (void)signal(SIGALRM, timeOut);
     timeout = 0;
     while (timeout <= 3)
     {
-
+        
         written = write(fd, trama, length + 5);
         written = written - 5;
-
         alarm(3);
         flag = 0;
         state = 0; //ints representing states
 
+
         while (state != 5 && flag == 0)
         {
+            printf("state %d\n", state);
 
             read(fd, &byte, 1);
-            printf("state: %d\n", state);
+            printf("%x\n",byte);
 
             switch (state){
                 case 0:
@@ -172,16 +175,19 @@ int llwrite(int fd, char *buffer, int length)
 
                 case 2: 
 
-                    if (byte == RR0 || byte == RR1) 
+                    if (byte == RR0 || byte == RR1) {
                         state = 3;
+                    }
                     else if (byte == REJ0 || byte == REJ1){
                         state = 0;
                         flag = 1;
                     }
-                    else if (byte == M_FLAG)
+                    else if (byte == M_FLAG){
                         state = 1;
-                    else
+
+                    }else{
                         state = 0;
+                    }
                     break;
                 case 3:
                     if (byte == (M_A_REC ^ controlo))
@@ -489,17 +495,17 @@ void send_SET(int fd)
 void send_REJ(int fd)
 {
 
-    char controlo;
+    unsigned char controlo;
     if (alternate == 0)
-    {
-        controlo = REJ0;
-    }
-    else if (alternate == 1)
     {
         controlo = REJ1;
     }
+    else if (alternate == 1)
+    {
+        controlo = REJ0;
+    }
 
-    char trama[5];
+    unsigned char trama[5];
     trama[0] = M_FLAG;
     trama[1] = M_A_REC;
     trama[2] = controlo;
@@ -514,19 +520,19 @@ void send_REJ(int fd)
 void send_RR(int fd)
 {
 
-    char controlo;
+    unsigned char controlo;
     if (alternate == 0)
     {
         alternate = 1;
-        controlo = RR0;
+        controlo = RR1;
     }
     else if (alternate == 1)
     {
         alternate = 0;
-        controlo = RR1;
+        controlo = RR0;
     }
 
-    char trama[5];
+    unsigned char trama[5];
     trama[0] = M_FLAG;
     trama[1] = M_A_REC; //Resposta do Recetor -> 0x03
     trama[2] = controlo;

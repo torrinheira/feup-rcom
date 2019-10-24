@@ -3,9 +3,12 @@
 #include <fcntl.h>
 #include <termios.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
 #include <signal.h>
+#include <unistd.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/time.h>
 
 #include "flags.h"
 #include "protocolo.h"
@@ -36,7 +39,7 @@ int main(int argc, char** argv){
 
     newtio.c_lflag = 0;
 
-    newtio.c_cc[VTIME]    = 2;   /* inter-character timer unused */
+    newtio.c_cc[VTIME]    = 1;   /* inter-character timer unused */
     newtio.c_cc[VMIN]     = 0;   /* blocking read until 5 chars received */
 
 
@@ -76,13 +79,7 @@ int comunication_type;
             printf("Must be specified a file path to transmit\n");
             exit(1);
         }
-        else{
-            file=fopen(argv[3],"rb"); //read file in binary mode
-            if(file == NULL){
-                printf("unable to open file\n");
-                exit(1);
-            }
-        }
+    
     }
     else if(strcmp(argv[2], "receiver") == 0){
         comunication_type = RECEIVER;
@@ -95,64 +92,49 @@ int comunication_type;
 /* llopen para estabelecer ligaçoes */
 /* depende do tipo, transmitter or receiver*/
 
+    if (comunication_type == TRANSMITTER){
 
-    if(comunication_type == TRANSMITTER){
-        if(llopen(fd,TRANSMITTER) < 0){
-            perror("could not establish connection\n");
-		    exit(-1);
-        }
+        if ((file = fopen(argv[3], "rb")) == NULL)
+            printf("failed to open file\n");
+        if (llopen(fd, comunication_type) == -1)
+            printf("failed to open connect with receiver\n");
 
-
+        fflush(NULL);
 
         char buffer[MAX_SIZE];
-        int name_size, file_size;
-        unsigned char* control_packet_start, control_packet_end;
-        int type_control_packet;
-        int packet_size;
+        char *payload;
+        char *stuffed;
+        int size;
+        short sequence_number = 0;
+        char *control = control_frame(argv[3], file, 1, &size); //START frame
+        stuffed = stuffing(control, &size);
+        
+        if (llwrite(fd, stuffed, size) == -1) //Send file info
+            exit(1);
 
-        name_size = strlen(argv[3]);
-        file_size = calculate_size_file(file);
+        printf("A enviar...\n");
 
-        //control_packet - inicio de transmissão
-        type_control_packet = START;
-        control_packet_start = control_packet(name_size,argv[3],file_size,type_control_packet,&packet_size);
+        int enviado = 0;
+        int file_size = getFileSize(file);
+
+        while ((size = fread(buffer, sizeof(char), MAX_SIZE, file)) > 0){ //Lê fragmento do ficheiro
 
 
+            payload = data_packet(sequence_number++, &size, buffer); //Adiciona campo de controlo, número de sequência, tamanho da payload
+            stuffed = stuffing(payload, &size);                 //Transparência e adiciona BCC2
 
-        //enviar control_packet  (NOTA: a única coisa que varia no control_packet END e START é valor de C)
-        char c_p_s[256];
-        control_packet_start = c_p_s;
-        printf("%s\n", control_packet_start);
-        llwrite(fd,c_p_s,packet_size);
+            if (llwrite(fd, stuffed, size) == -1) 
+                exit(1);
 
-        //mandar dados
-        //até ter bytes para ler, devemos ler o ficheiro, sempre em pacotes de 256 bytes
-        int bytes_written = 0, bytes_read;
-        int packages_sent = 1;
-
-        while((bytes_read = fread(buffer, sizeof(char),MAX_SIZE, file)) > 0){
-            
-            //enviar os pedaços de dados dentro de data_packages
-            char *data_package = data_packet(fd,packages_sent,bytes_read,buffer);                    
-            char *stuffed_message = stuffing(data_package, &bytes_read);
-
-            // puts the stuffed message in the information trama
-            llwrite(fd, stuffed_message, bytes_read);
-            
-            packages_sent++;                                                                       
-
-            bytes_written= bytes_written + bytes_read;
+            printf("um ciclo feito\n");
         }
-
-        fclose(file);
         
+        control = control_frame(argv[3], file, 0, &size); //END frame
+        stuffed = stuffing(control, &size);
 
-        //mandar control_package de final
-        packet_size = 0;
-        type_control_packet = END;
-        control_packet_start = control_packet(name_size,argv[3],file_size,type_control_packet,&packet_size);
-        llwrite(fd,control_packet_end,packet_size);
-        
+        if (llwrite(fd, stuffed, size) == -1) //Send END frame
+            printf("failed to send END frame\n");
+
     }
     else if(comunication_type == RECEIVER){
         
@@ -170,10 +152,14 @@ int comunication_type;
         char* file_name;
         int file_size = 0;
 
+        char stuffed[500];
+        char* buffer;
+        char* destuffed;
+
         while(control_flag){
 
             length = llread(fd, control_p);
-
+            
             file_name = get_info(control_p, &file_size);
             if(file_name != NULL){
 					printf("File Name: %s\nFile Size: %d\n", file_name, file_size);
@@ -181,13 +167,42 @@ int comunication_type;
 					file=fopen(file_name, "wb");	
 					control_flag = 0;
 				}
-				else
+				else{
+                    printf("file name null\n");
 					send_REJ(fd);
-
+                }
 
         }
 
+        
         //parser do pacote de dados
+        printf("receiving ...\n");
+        while( (length = llread(fd, stuffed) )> 0){
+			
+			if(stuffed[0]==END){
+				
+				buffer = verify_bcc2(stuffed, &length);	
+				if(buffer == NULL)
+					send_REJ(fd);
+				else{
+					send_RR(fd);
+					break;
+				}
+			}	
+			else{
+				destuffed = verify_bcc2(stuffed, &length);								//Faz destuff e verifica o BCC2
+				
+				if(destuffed == NULL)
+						send_REJ(fd);
+				else{
+					buffer = rem_data_packet(destuffed, &length);							//Remove Header 
+					send_RR(fd);
+					fwrite(buffer,1,length,file);
+				}
+				
+			}
+			
+		}	
         
 
         

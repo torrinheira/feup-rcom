@@ -5,7 +5,10 @@
 #include <string.h>
 
 int calculate_size_file(FILE* file);
-unsigned char* control_packet(int name_size, char* file_name,int file_size, int type_control_packet,int *packet_size);
-char* data_packet(int fd, int packages_sent, int length, char* buffer);
+char *control_frame(char *filename, FILE *file, int start, int *frame_size);
 
-char* get_info(char* control_p, int* file_size);
+char *data_packet(int packages_sent, int *length, char *buffer);
+char* rem_data_packet(char* buffer, int* length);
+
+char *get_info(char *control_p, int *file_size);
+int getFileSize(FILE *file);
