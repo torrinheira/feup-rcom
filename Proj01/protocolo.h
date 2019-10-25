@@ -9,40 +9,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
-#include "auxiliar.h"
-
-#define BAUDRATE B9600
-#define MODEMDEVICE "/dev/ttyS0"
-#define _POSIX_SOURCE 1 /* POSIX compliant source */
-#define FALSE 0
-#define TRUE 1
-#define M_FLAG 0x7e
-#define M_A_SND 0x01
-#define M_A_REC 0x03
-#define M_C_SND 0x07
-#define M_C_REC 0x03
-#define M_A_R 0x01
-#define DISC 0x0B
-#define UA 0x07
-#define SET 0x03
-#define TRANSMITTER 1
-#define RECEIVER 0
-#define ESCAPE 0x7d
-#define ESCAPE_FLAG 0x5d
-#define FLAG_ESC 0x5e
-#define MAX_TRIES 3
-#define ACCEPTED 1      //ACK sent correctly
-#define REJECTED -1     //ACK wrong
-#define _POSIX_SOURCE 1 /* POSIX compliant source */
-#define RR0 0x05
-#define RR1 0x85
-#define REJ0 0x01
-#define REJ1 0x81
+#include "macros.h"
 
 /**
- * @brief 
- * 
- * @param fd 
+ * @brief
+ *
+ * @param fd
  * @param type specefies sender or receiver
  * @return int fd or -1 if failed to open
  */
@@ -54,10 +26,6 @@ int llread(int fd, char *buffer);
 
 int llclose(int fd, int type);
 
-/**
- * @brief increases counter and raises flah
- * 
- */
 void timeOut();
 
 void send_UA(int fd, int type);
@@ -76,5 +44,14 @@ char* destuffing(char* msg, int* length);
 
 char* verify_bcc2(char* control_message, int *length);
 
+int calculate_size_file(FILE* file);
 
+char *control_frame(char *filename, FILE *file, int start, int *frame_size);
 
+char *data_packet(int packages_sent, int *length, char *buffer);
+
+char* rem_data_packet(char* buffer, int* length);
+
+char *read_control(char *control_p, int *file_size);
+
+int getFileSize(FILE *file);

@@ -10,15 +10,14 @@
 #include <string.h>
 #include <sys/time.h>
 
-#include "flags.h"
+#include "macros.h"
 #include "protocolo.h"
-#include "auxiliar.h"
 
 //a função main será exclusiva e estará presente neste mesmo ficheiro
 int main(int argc, char** argv){
 
 
-    struct termios oldtio,newtio; 
+    struct termios oldtio,newtio;
     int fd = open(argv[1], O_RDWR | O_NOCTTY ); //abertura de um file descriptor associado a um ficheiro passado como argumento na consola
 
     if (fd <0) {
@@ -54,8 +53,8 @@ int main(int argc, char** argv){
 
 /*
 *
-*  ESTABELICIMENTO DA COMUNICAÇÃO 
-*   
+*  ESTABELICIMENTO DA COMUNICAÇÃO
+*
 *   declarar porta de série a usar, 0,1 ou 2
 *   Pode ser do tipo WRITER or READER
 *   Se for writer tem de obrigatoriamente ter um diretório do ficheiro se for reader nao
@@ -67,7 +66,7 @@ int comunication_type;
 
 //processar argumentos
     if (((strcmp("/dev/ttyS0", argv[1])!=0) && (strcmp("/dev/ttyS1", argv[1])!=0) && (strcmp("/dev/ttyS2", argv[1])!=0))){
-	    
+
         printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS1\n");
 	    exit(1);
 	}
@@ -79,7 +78,7 @@ int comunication_type;
             printf("Must be specified a file path to transmit\n");
             exit(1);
         }
-    
+
     }
     else if(strcmp(argv[2], "receiver") == 0){
         comunication_type = RECEIVER;
@@ -108,7 +107,7 @@ int comunication_type;
         short sequence_number = 0;
         char *control = control_frame(argv[3], file, 1, &size); //START frame
         stuffed = stuffing(control, &size);
-        
+
         if (llwrite(fd, stuffed, size) == -1) //Send file info
             exit(1);
 
@@ -123,12 +122,12 @@ int comunication_type;
             payload = data_packet(sequence_number++, &size, buffer); //Adiciona campo de controlo, número de sequência, tamanho da payload
             stuffed = stuffing(payload, &size);                 //Transparência e adiciona BCC2
 
-            if (llwrite(fd, stuffed, size) == -1) 
+            if (llwrite(fd, stuffed, size) == -1)
                 exit(1);
 
             printf("um ciclo feito\n");
         }
-        
+
         control = control_frame(argv[3], file, 0, &size); //END frame
         stuffed = stuffing(control, &size);
 
@@ -137,7 +136,7 @@ int comunication_type;
 
     }
     else if(comunication_type == RECEIVER){
-        
+
         // establishes connection
         if(llopen(fd, RECEIVER) < 0){
 		    perror("could not establish connection\n");
@@ -159,12 +158,12 @@ int comunication_type;
         while(control_flag){
 
             length = llread(fd, control_p);
-            
-            file_name = get_info(control_p, &file_size);
+
+            file_name = read_control(control_p, &file_size);
             if(file_name != NULL){
 					printf("File Name: %s\nFile Size: %d\n", file_name, file_size);
 					send_RR(fd);
-					file=fopen(file_name, "wb");	
+					file=fopen(file_name, "wb");
 					control_flag = 0;
 				}
 				else{
@@ -174,38 +173,38 @@ int comunication_type;
 
         }
 
-        
+
         //parser do pacote de dados
         printf("receiving ...\n");
         while( (length = llread(fd, stuffed) )> 0){
-			
+
 			if(stuffed[0]==END){
-				
-				buffer = verify_bcc2(stuffed, &length);	
+
+				buffer = verify_bcc2(stuffed, &length);
 				if(buffer == NULL)
 					send_REJ(fd);
 				else{
 					send_RR(fd);
 					break;
 				}
-			}	
+			}
 			else{
 				destuffed = verify_bcc2(stuffed, &length);								//Faz destuff e verifica o BCC2
-				
+
 				if(destuffed == NULL)
 						send_REJ(fd);
 				else{
-					buffer = rem_data_packet(destuffed, &length);							//Remove Header 
+					buffer = rem_data_packet(destuffed, &length);							//Remove Header
 					send_RR(fd);
 					fwrite(buffer,1,length,file);
 				}
-				
-			}
-			
-		}	
-        
 
-        
+			}
+
+		}
+
+
+
     }
     else{
         printf("unrecognized type of communication\n");

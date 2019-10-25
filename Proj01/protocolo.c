@@ -1,12 +1,10 @@
 #include "protocolo.h"
+#include "macros.h"
+
 
 int flag = 0;
 int timeout = 0;
 int alternate = 0;
-
-
-
-
 
 void timeOut()
 {
@@ -15,32 +13,28 @@ void timeOut()
 }
 
 
-int llopen(int fd, int com_type)
-{
+int llopen(int fd, int comunication_type){
 
-    if (com_type)//sender
+    if (comunication_type)//sender
         (void)signal(SIGALRM, timeOut);
     char address, address2;
     char byte;
     int state = 0;
 
-    if (!com_type)
-    {
+    if (!comunication_type)
         printf("Esperando emissor...\n");
-    }
     else
         printf("Esperando recetor...\n");
-    while (timeout <= 3)
-    {
+    while (timeout <= 3){
 
-        if (com_type){ //Sender
+        if (comunication_type){ //Sender
             send_SET(fd);
             alarm(3);
             flag = 0;
         }
 
         while (state != 5 && flag == 0){
-            
+
             read(fd, &byte, 1);
 
             switch (state){
@@ -49,22 +43,21 @@ int llopen(int fd, int com_type)
                 if (byte == M_FLAG)
                     state = 1;
                 break;
-            case 1: 
-                if (com_type)
+            case 1:
+                if (comunication_type)
                     address = M_A_SND;
                 else
                     address = M_C_REC;
                 if (byte == address)
                     state = 2;
-                else if (byte == M_FLAG){
+                else if (byte == M_FLAG)
                     state = 1;
-                }
                 else
                     state = 0;
                 break;
 
-            case 2: 
-                if (com_type)
+            case 2:
+                if (comunication_type)
                     address2 = UA;
                 else
                     address2 = SET;
@@ -75,20 +68,17 @@ int llopen(int fd, int com_type)
                 else
                     state = 0;
                 break;
-            case 3: 
+            case 3:
                 if (byte == (address ^ address2))
                     state = 4;
                 else
                     state = 0;
                 break;
-            case 4: 
-                if (byte == M_FLAG)
-                {
+            case 4:
+                if (byte == M_FLAG){
                     state = 5;
-                    if (!com_type) //receiver
-                    {
-                        send_UA(fd, com_type);
-                    }
+                    if (!comunication_type) //receiver
+                        send_UA(fd, comunication_type);
                     printf("Ligação Estabelecida\n");
                     return 1;
                 }
@@ -131,9 +121,7 @@ int llwrite(int fd, char *buffer, int length)
 
 
     for (i = 4; i < length + 4; i++)
-    {
         trama[i] = buffer[i - 4];
-    }
 
     if(controlo == RR0) // expects the opposite bit on RR
         controlo = RR1;
@@ -142,9 +130,8 @@ int llwrite(int fd, char *buffer, int length)
     //ESPERAR PELO ACK
     (void)signal(SIGALRM, timeOut);
     timeout = 0;
-    while (timeout <= 3)
-    {
-        
+    while (timeout <= 3){
+
         written = write(fd, trama, length + 5);
         written = written - 5;
         alarm(3);
@@ -152,8 +139,7 @@ int llwrite(int fd, char *buffer, int length)
         state = 0; //ints representing states
 
 
-        while (state != 5 && flag == 0)
-        {
+        while (state != 5 && flag == 0){
             printf("state %d\n", state);
 
             read(fd, &byte, 1);
@@ -173,11 +159,10 @@ int llwrite(int fd, char *buffer, int length)
                         state = 0;
                     break;
 
-                case 2: 
+                case 2:
 
-                    if (byte == RR0 || byte == RR1) {
+                    if (byte == RR0 || byte == RR1)
                         state = 3;
-                    }
                     else if (byte == REJ0 || byte == REJ1){
                         state = 0;
                         flag = 1;
@@ -185,9 +170,8 @@ int llwrite(int fd, char *buffer, int length)
                     else if (byte == M_FLAG){
                         state = 1;
 
-                    }else{
+                    }else
                         state = 0;
-                    }
                     break;
                 case 3:
                     if (byte == (M_A_REC ^ controlo))
@@ -195,7 +179,7 @@ int llwrite(int fd, char *buffer, int length)
                     else
                         state = 0;
                     break;
-                case 4: 
+                case 4:
                     if (byte == M_FLAG){
                         state = 5;
                         return written;
@@ -211,8 +195,7 @@ int llwrite(int fd, char *buffer, int length)
 }
 
 // LLREAD
-int llread(int fd, char *buffer)
-{
+int llread(int fd, char *buffer){
 
     int length = 0;
     int state = 0;
@@ -221,80 +204,53 @@ int llread(int fd, char *buffer)
     char current;
 
     if (alternate == 0)
-    {
         acknowledge = RR0;
-    }
     else if (alternate == 1)
-    {
         acknowledge = RR1;
-    }
 
-    while (state != 5)
-    {
+    while (state != 5){
 
         read(fd, &current, 1);
 
-        switch (state)
-        {
+        switch (state){
 
         case 0:
-            if (current == M_FLAG)
-            { // first byte ok !
+            if (current == M_FLAG)// first byte ok !
                 state = 1;
-            }
             break;
         case 1:
-            if (current == M_A_REC)
-            { // second byte ok !
+            if (current == M_A_REC) // second byte ok !
                 state = 2;
-            }
             else if (current == M_FLAG)
-            {
                 state = 1;
-            }
             else
-            {
                 state = 0;
-            }
             break;
         case 2:
-            if (current == acknowledge)
-            { // third byte ok !
+            if (current == acknowledge) // third byte ok !
                 state = 3;
-            }
             else if (current == M_FLAG)
-            {
                 state = 1;
-            }
             else
-            {
                 state = 0;
-            }
             break;
         case 3:
-            if (current == (M_A_REC ^ acknowledge))
-            { // fourth byte ok !
+            if (current == (M_A_REC ^ acknowledge)) // fourth byte ok !
                 state = 4;
-            }
             else
-            {
                 state = 0;
-            }
             break;
         case 4:
-            if (current == M_FLAG)
-            { // receiving termination FLAG ends the cycle
+            if (current == M_FLAG) // receiving termination FLAG ends the cycle
                 state = 5;
-            }
-            else
-            { // fills buffer with the chunk of information
+            else{ // fills buffer with the chunk of information
                 buffer[length] = current;
                 length++;
             }
             break;
         }
     }
-    
+
     return length;
 }
 
@@ -308,27 +264,21 @@ int llclose(int fd, int type)
     char current;
     int receiveUA = 0;
 
-    if (type == 1)
-    { // this means we are dealing with the sender
+    if (type == 1) // this means we are dealing with the sender
         send_DISC(fd, type);
-    }
 
-    while (timeout <= 3 || !type)
-    {
+    while (timeout <= 3 || !type){
 
-        if (type == 0)
-        {
+        if (type == 0){
             alarm(3);
             flag = 0;
         }
 
-        while (state != 5 && flag == 0)
-        {
+        while (state != 5 && flag == 0){
 
             read(fd, &current, 1);
 
-            switch (state)
-            {
+            switch (state){
 
             case 0:
                 if (current == M_FLAG)
@@ -337,79 +287,51 @@ int llclose(int fd, int type)
             case 1:
 
                 if (type == 0)
-                {
                     address = M_A_REC;
-                }
                 else if (type == 1)
-                {
                     address = M_A_R;
-                }
 
                 if (current == address)
-                {
                     state = 2;
-                }
                 else if (current == M_FLAG)
-                {
                     state = 1;
-                }
                 else
-                {
                     state = 0;
-                }
                 break;
             case 2:
-                if (current == DISC)
-                { // third byte ok !
+                if (current == DISC)// third byte ok !
                     state = 3;
-                }
                 else if (current == UA && receiveUA == 1)
-                {
                     state = 3;
-                }
                 else if (current == M_FLAG)
-                {
                     state = 1;
-                }
                 else
-                {
                     state = 0;
-                }
                 break;
             case 3:
-                if (current == (address ^ DISC))
-                { // fourth byte ok !
+                if (current == (address ^ DISC))// fourth byte ok !
                     state = 4;
-                }
                 else if ((receiveUA == 1) && (current == (UA ^ address)))
-                {
                     state = 4;
-                }
                 else
-                {
                     state = 0;
-                }
                 break;
             case 4:
-                if (current == M_FLAG)
-                {
+                if (current == M_FLAG){
                     state = 5;
-                    if (type == 0 && receiveUA == 0)
-                    {
+                    if (type == 0 && receiveUA == 0){
                         send_DISC(fd, type);
 
                         state = 0;
                         receiveUA = 1;
                     }
-                    else if (type == 1)
-                    {
+                    else if (type == 1){
                         send_UA(fd, type); // TO DO
 
                         printf("Ligação encerrada!\n");
                         return 1;
                     }
-                    else if (receiveUA == 1)
-                    {
+                    else if (receiveUA == 1){
 
                         printf("Ligação encerrada!\n");
                         return 1;
@@ -424,20 +346,17 @@ int llclose(int fd, int type)
 }
 
 // sends DISC depending on weather its a receiver or sender
-void send_DISC(int fd, int type)
-{
+void send_DISC(int fd, int type){
 
     char trama[5];
     char address;
 
     trama[0] = M_FLAG;
-    if (type == 1)
-    { // sender
+    if (type == 1){ // sender
         address = M_A_REC;
         trama[1] = address;
     }
-    else
-    { // receiver
+    else{ // receiver
         address = M_A_R;
         trama[1] = address;
     }
@@ -450,20 +369,17 @@ void send_DISC(int fd, int type)
 }
 
 // sends UA
-void send_UA(int fd, int type)
-{
+void send_UA(int fd, int type){
 
     char UA_trama[5];
     char address;
 
     UA_trama[0] = M_FLAG;
-    if (type == 1)
-    {
+    if (type == 1){
         address = M_A_REC;
         UA_trama[1] = address;
     }
-    else
-    {
+    else{
         address = M_A_R;
         UA_trama[1] = address;
     }
@@ -638,3 +554,149 @@ char *verify_bcc2(char *control_message, int *length)
 }
 
 
+//function found @stackoverflow
+int calculate_size_file(FILE* file){
+
+    int size = 0;
+    int value;
+
+    // saving current position
+	int currentPosition = ftell(file);
+
+	// seeking end of file
+    value = fseek(file, 0, SEEK_END);
+    if(value == -1){
+        printf("impossible to get file size to transfer.\n");
+		return -1;
+    }
+
+	// saving file size
+	size = ftell(file);
+
+	// seeking to the previously saved position
+	fseek(file, 0, currentPosition);
+
+    return size;
+}
+
+//parametros importantes a passar para que o reader tenha informação: nome do ficheiro e tamanho a do mesmo
+char *control_frame(char *filename, FILE *file, int start, int *frame_size){
+
+    int file_name_size = strlen(filename);
+    int file_size = calculate_size_file(file); //Get file size
+    if (start)
+        printf("\nFile size = %d bytes\n\n", file_size);
+    int i = 0;
+    char file_size_in_string[30];
+    sprintf(file_size_in_string, "%d", file_size);
+
+    *frame_size = 5 + file_name_size + strlen(file_size_in_string);
+    char *control_frame = malloc(*frame_size);
+
+    if (start)
+        control_frame[i] = START;
+    else
+        control_frame[i] = END;
+
+    i++;
+    control_frame[i] = 0x00;
+    i++;
+    control_frame[i] = (char)strlen(file_size_in_string);
+    i++;
+
+    for (; i < strlen(file_size_in_string) + 3; i++){
+
+        control_frame[i] = file_size_in_string[i - 3];
+    }
+
+    control_frame[i] = 0x01;
+    i++;
+    control_frame[i] = (char)file_name_size;
+    i++;
+
+    int j;
+    for (j = i; i < file_name_size + j; i++){
+
+        control_frame[i] = filename[i - j];
+    }
+
+    return control_frame;
+}
+
+char* data_packet(int packages_sent, int *length, char* buffer){
+
+    int size = *length + 4;
+
+    unsigned char* data_package =( char*) malloc(size);
+
+    data_package[0] = 0x00;
+    data_package[1] = (char) packages_sent;
+    data_package[2] = (char) (*length) / 256;
+    data_package[3] = (char) (*length) % 256;
+
+    for(size_t i = 0 ; i < *length ; i++ )
+		data_package[i+4] = buffer[i];
+
+
+    // llwrite(fd,data_package,length);
+    // free(data_package);
+    *length = *length + 4;
+    return data_package;
+}
+
+
+char* rem_data_packet(char* buffer, int* length){
+
+    int size = 2 * (*length);
+    char* tmp = malloc(size);
+
+    for(int i = 0; i < *length - 4; i++)
+        tmp[i] = buffer[i + 4];
+
+    *length = *length - 4;
+    return tmp;
+
+}
+
+
+char *read_control(char *control, int *file_size){
+
+    if (control[0] != START)
+        return NULL;
+
+    int pos = 4 + control[2];
+    int filename_size = control[4 + control[2]];
+
+    char *buffer = malloc(100);
+
+    char *size = malloc(control[2]);
+    int i;
+
+    for (i = 0; i < filename_size; i++){
+        buffer[i] = control[pos + 1 + i];
+    }
+
+    for (i = 0; i < control[2]; i++)
+        size[i] = control[i + 3];
+
+    *file_size = atoi(size);
+    return buffer;
+}
+
+int getFileSize(FILE *file){
+
+    printf("desobrimos?\n");
+    int currentPosition = ftell(file);
+
+    printf("sera aqui?\n");
+    if (fseek(file, 0, SEEK_END) == -1){
+        printf("ERROR: Could not get file size.\n");
+        return -1;
+    }
+
+    int size = ftell(file);
+
+    fseek(file, 0, currentPosition);
+
+    return size;
+}
