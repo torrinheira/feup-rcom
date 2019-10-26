@@ -14,7 +14,7 @@
 #define UA 0x07
 #define SET 0x03
 #define DISC 0x0B
-#define TRANSMITTER 1
+#define SENDER 1
 #define RECEIVER 0
 #define MAX_SIZE 256
 #define ESCAPE 0x7d

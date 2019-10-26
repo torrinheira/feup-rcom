@@ -75,8 +75,8 @@ int comunication_type;      //tipo de comunicação que vai ser associado a cada
 
 
     if(strcmp(argv[2], "sender") == 0){
-        comunication_type = TRANSMITTER;
-        if(argc != 4){     //sendo transmitter terá obrigatoriamente 4 argumentos
+        comunication_type = SENDER;
+        if(argc != 4){     //sendo SENDER terá obrigatoriamente 4 argumentos
             printf("Must be specified a file path to transmit\n");
             exit(1);
         }
@@ -91,9 +91,9 @@ int comunication_type;      //tipo de comunicação que vai ser associado a cada
     }
 
 /* llopen para estabelecer ligaçoes */
-/* depende do tipo, transmitter or receiver*/
+/* depende do tipo, SENDER or receiver*/
 
-    if (comunication_type == TRANSMITTER){
+    if (comunication_type == SENDER){
 
         if ((file = fopen(argv[3], "rb")) == NULL)   //verificar se o ficheiro a transmitir foi aberto com sucesso
             printf("failed to open file\n");
@@ -102,25 +102,26 @@ int comunication_type;      //tipo de comunicação que vai ser associado a cada
 
         fflush(NULL);
 
-        char buffer[MAX_SIZE];
+        int size;
+        char tmp[MAX_SIZE];
         char *data_packet;
         char *data_packet_stuffed;
         char *control_packet_stuffed;
-        int size;
-        short sequence_number = 0;
-        char *control = control_frame(argv[3], file, 1, &size); //constrói pacote de controlo START
-        control_packet_stuffed = stuffing(control, &size);      //dá stuffing do controlo
+
+        short seq_number = 0;
+        char *control_frame = assemble_c_frame(argv[3], file, 1, &size); //constrói pacote de controlo START
+        
+        control_packet_stuffed = stuffer(control_frame, &size);      //dá stuffer do controlo
 
         if (llwrite(fd, control_packet_stuffed, size) == -1) //envia controlo
             exit(1);
 
         printf("A enviar...\n");
 
-        while ((size = fread(buffer, sizeof(char), MAX_SIZE, file)) > 0){   //Lê fragmento do ficheiro e sai do ciclo quando não houver mais nada para ler
+        while ((size = fread(tmp, sizeof(char), MAX_SIZE, file)) > 0){   //Lê fragmento do ficheiro e sai do ciclo quando não houver mais nada para ler
 
-
-            data_packet = build_data_packet(sequence_number++, &size, buffer);              //constrói pacote de dados
-            data_packet_stuffed = stuffing(data_packet, &size);                             //BCC2 e stuffing
+            data_packet = build_data_packet(seq_number++, &size, tmp);              //constrói pacote de dados
+            data_packet_stuffed = stuffer(data_packet, &size);          //BCC2 e stuffer
 
             if (llwrite(fd, data_packet_stuffed, size) == -1)
                 exit(1);
@@ -128,8 +129,8 @@ int comunication_type;      //tipo de comunicação que vai ser associado a cada
             printf("um pacote de dados enviado com sucesso\n");
         }
 
-        control = control_frame(argv[3], file, 0, &size);       //termina a transferência de dados e é enviado um pacote de controlo END
-        control_packet_stuffed = stuffing(control, &size);
+        control_frame = assemble_c_frame(argv[3], file, 0, &size);       //termina a transferência de dados e é enviado um pacote de controlo END
+        control_packet_stuffed = stuffer(control, &size);
 
         if (llwrite(fd, control_packet_stuffed, size) == -1)    //envia pacote de fim
             printf("failed to send END frame\n");
@@ -154,23 +155,26 @@ int comunication_type;      //tipo de comunicação que vai ser associado a cada
         int file_size = 0;
 
         char stuffed_info[500];
-        char* buffer;
+        char* tmp;
         char* destuffed;
 
         while(control_flag){
 
-            length = llread(fd, control_p);         //nº de bytes lidos
+            length = llread(fd, control_p);        //nº de bytes lidos
+
+            control_p = check_bcc2(control_p, &length); //COMENTAR SE NAO DER!!!!!
 
             file_name = read_control(control_p, &file_size); //lê informação do pacote de controlo enviado pelo sender(nome do ficheiro e o tamanho do mesmo)
+            
+            
             if(file_name != NULL){
 					printf("File Name: %s\nFile Size: %d\n", file_name, file_size); //mostra a informação recebida
-					send_RR(fd);                                                     //envia um trama de supervisão representativo do sucesso da operação
+					send_RR_message(fd);                                                     //envia um trama de supervisão representativo do sucesso da operação
 					file=fopen(file_name, "wb");                                     //aberto um ficheiro com o nome obtido no modo write binary
 					control_flag = 0;                                                //condição para saída do ciclo
-				}
-				else{
+				}else{
                     printf("impossible to read file name!\n");
-					send_REJ(fd);
+					send_REJ_message(fd);
                 }
 
         }
@@ -182,23 +186,22 @@ int comunication_type;      //tipo de comunicação que vai ser associado a cada
 
 			if(stuffed_info[0]==END){                                                 //reconheceu o pacote de terminação e sai do ciclo (no break)
 
-				buffer = verify_bcc2(stuffed_info, &length);                          // verifica o sucesso ou nao da comparação do BCC2 e manda RR ou REJ consoante
-				if(buffer == NULL)                                                    // resultado da função
-					send_REJ(fd);
+				tmp = check_bcc2(stuffed_info, &length);                          // verifica o sucesso ou nao da comparação do BCC2 e manda RR ou REJ consoante
+				if(tmp == NULL)                                                    // resultado da função
+					send_REJ_message(fd);
 				else{
-					send_RR(fd);
+					send_RR_message(fd);
 					break;
 				}
-			}
-			else{
-				destuffed = verify_bcc2(stuffed_info, &length);								    //Faz destuff e verifica o BCC2
+			}else{
+				destuffed = check_bcc2(stuffed_info, &length);								    //Faz destuff e verifica o BCC2
 
 				if(destuffed == NULL)
-						send_REJ(fd);
+						send_REJ_message(fd);
 				else{
-					buffer = rem_data_packet(destuffed, &length);							//Remove Header do pacote de dados
-					send_RR(fd);
-					fwrite(buffer,1,length,file);
+					tmp = rem_data_packet(destuffed, &length);							//Remove Header do pacote de dados
+					send_RR_message(fd);
+					fwrite(tmp,1,length,file);
 				}
 
 			}
