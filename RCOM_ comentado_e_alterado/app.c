@@ -130,7 +130,7 @@ int comunication_type;      //tipo de comunicação que vai ser associado a cada
         }
 
         control_frame = assemble_c_frame(argv[3], file, 0, &size);       //termina a transferência de dados e é enviado um pacote de controlo END
-        control_packet_stuffed = stuffer(control, &size);
+        control_packet_stuffed = stuffer(control_frame, &size);
 
         if (llwrite(fd, control_packet_stuffed, size) == -1)    //envia pacote de fim
             printf("failed to send END frame\n");

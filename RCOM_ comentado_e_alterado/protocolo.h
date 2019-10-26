@@ -46,7 +46,7 @@ char* check_bcc2(char* c_message, int *size);
 
 char *assemble_c_frame(char *name, FILE *file, int start, int *size);
 
-char *build_data_packet(int packages_sent, int *size, char *buffer);
+char *build_data_packet(int packages_sent, int *length, char *buffer);
 
 char* rem_data_packet(char* buffer, int* size);
 

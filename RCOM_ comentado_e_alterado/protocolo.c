@@ -480,7 +480,7 @@ char *stuffer(char *to_stuff, int *size){
     k = 0;
 
     //stuffs
-    for (; i < *size + 1; i++, j++){
+    for (; i < *size + 1; i++, k++){
 
         if (auxiliar[i] == M_FLAG){ //replacing flag
             stuffed[k] = 0x7d;
@@ -489,7 +489,7 @@ char *stuffer(char *to_stuff, int *size){
         }else if (auxiliar[i] == 0x7d){ //replacing flag replacer
             stuffed[k] = 0x7d;
             stuffed[1 + k] = 0x5d;
-            j++;
+            k++;
         }else
             stuffed[k] = auxiliar[i];
     }
@@ -539,7 +539,7 @@ char *check_bcc2(char *c_message, int *size){
         c_bcc2 ^= destuffed_msg[i];
 
     //checks bcc2
-    if (c_bcc2 != destuffed_msg[*length - 1]{
+    if (c_bcc2 != destuffed_msg[*size - 1]){
         *size = -1;
         return NULL;
     }
@@ -602,7 +602,7 @@ char *assemble_c_frame(char *name, FILE *file, int start, int *size){
     return c_msg;
 }
 
-char* build_data_packet(int packages_sent, int *size, char* buffer){
+char* build_data_packet(int packages_sent, int *length, char* buffer){
 
     int size = *length + 4;
 
@@ -610,21 +610,21 @@ char* build_data_packet(int packages_sent, int *size, char* buffer){
 
     data_package[0] = 0x00;
     data_package[1] = (char) packages_sent;
-    data_package[2] = (char)(*size) / 256;
-    data_package[3] = (char)(*size) % 256;
+    data_package[2] = (char)(*length) / 256;
+    data_package[3] = (char)(*length) % 256;
 
     for(size_t i = 0 ; i < *length ; i++ )
 		data_package[i+4] = buffer[i];
 
     //atualiza o tamanho e retorna o packet com os dados
-    *size = *size + 4;
+    *length = *length + 4;
     return data_package;
 }
 
 
 char* rem_data_packet(char* buffer, int* size){
 
-    int length = 2 * (*length);
+    int length = 2 * (*size);
     char* tmp = malloc(length);
 
     for (int i = 0; i < *size - 4; i++)
