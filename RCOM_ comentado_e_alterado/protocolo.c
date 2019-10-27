@@ -128,7 +128,7 @@ int llwrite(int fd, char *buffer, int length){
         controlo = RR1;
     else controlo = RR0;
 
-    //ESPERAR PELO ACK
+    //ESPERAR PELA CONFIRMAÇÃO DE SUCESSO NA MÁQUINA OPOSTA
     (void)signal(SIGALRM, timeOut);
     timeout = 0;
     while (timeout <= 3){
@@ -258,6 +258,10 @@ int llread(int fd, char *buffer){
 // LLCLOSE --> function used by both receiver and sender (type)
 int llclose(int fd, int type)
 {
+
+    //type 
+    //if 1 -> SENDER
+    //if 0 -> RECEIVER
 
     char address;
     int state = 0;
@@ -401,7 +405,7 @@ void send_SET_message(int fd){
     message[0] = M_FLAG;
     message[1] = M_A_REC;
     message[2] = SET;
-    message[3] = M_A_REC ^ SET;
+    message[3] = message[1] ^ message[2];
     message[4] = M_FLAG;
 
     write(fd, message, 5);
@@ -469,17 +473,17 @@ char *stuffer(char *to_stuff, int *size){
 
     //calculates bcc2's char
     for (; i < *size; i++, k++){
-        c_bcc ^= to_stuff[i];
-        auxiliar[i] = to_stuff[i];
+        c_bcc ^= to_stuff[i];           //calcular bcc
+        auxiliar[i] = to_stuff[i];      //passa para o array auxiliar o que é passado para a função
     }
 
-    auxiliar = (char *)realloc(auxiliar, (*size) + 1);
+    auxiliar = (char *)realloc(auxiliar, (*size) + 1);      //auxiliar realoca memória para lhe ser passado o bcc
     auxiliar[*size] = c_bcc;
 
     i = 0;
     k = 0;
 
-    //stuffs
+    //stuffs - from auxiliar to stuffed
     for (; i < *size + 1; i++, k++){
 
         if (auxiliar[i] == M_FLAG){ //replacing flag
@@ -649,11 +653,11 @@ char *read_control(char *control, int *file_size){
     char *size = malloc(control[2]);
     int i;
 
-    for (i = 0; i < filename_size; i++){
+    for (i = 0; i < filename_size; i++){        //ir buscar o nome do ficheiro
         buffer[i] = control[pos + 1 + i];
     }
 
-    for (i = 0; i < control[2]; i++)
+    for (i = 0; i < control[2]; i++)             //buscar o tamanho do ficheiro
         size[i] = control[i + 3];
 
     *file_size = atoi(size);

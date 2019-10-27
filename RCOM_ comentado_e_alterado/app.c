@@ -104,16 +104,17 @@ int comunication_type;      //tipo de comunicação que vai ser associado a cada
 
         int size;
         char tmp[MAX_SIZE];
+        char *control_frame;
         char *data_packet;
         char *data_packet_stuffed;
         char *control_packet_stuffed;
-
         short seq_number = 0;
-        char *control_frame = assemble_c_frame(argv[3], file, 1, &size); //constrói pacote de controlo START
-        
+
+
+        control_frame = assemble_c_frame(argv[3], file, 1, &size); //constrói pacote de controlo START  
         control_packet_stuffed = stuffer(control_frame, &size);      //dá stuffer do controlo
 
-        if (llwrite(fd, control_packet_stuffed, size) == -1) //envia controlo
+        if (llwrite(fd, control_packet_stuffed, size) == -1) //envia controlo --> size = size do control_packet_stuffed
             exit(1);
 
         printf("A enviar...\n");
@@ -203,24 +204,13 @@ int comunication_type;      //tipo de comunicação que vai ser associado a cada
 					send_RR_message(fd);
 					fwrite(tmp,1,length,file);
 				}
-
 			}
-
 		}
-
-
-
     }
     else{       //se for passado um tipo diferente de comunicação no terminal
         printf("unrecognized type of communication\n");
         exit(1);
     }
-
-
-
-
-
-
 /*------------------------------------------------------------ TERMINAÇÃO DA APLICAÇÃO ----------------------------------------------------------------------------------*/
 
 
