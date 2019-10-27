@@ -6,15 +6,8 @@
 #define FALSE 0
 #define TRUE 1
 #define M_FLAG 0x7e
-#define M_A_SND 0x01
-#define M_A_REC 0x03
-#define M_A_R 0x01
-#define M_C_SND 0x07
-#define M_C_REC 0x03
-#define UA 0x07
-#define SET 0x03
-#define DISC 0x0B
-#define TRANSMITTER 1
+
+#define SENDER 1
 #define RECEIVER 0
 #define MAX_SIZE 256
 #define ESCAPE 0x7d
@@ -25,6 +18,17 @@
 #define REJECTED -1		//ACK wrong
 #define _POSIX_SOURCE 1 /* POSIX compliant source */
 
+//A field
+#define M_A_SND 0x01
+#define M_A_REC 0x03
+#define M_A_R 0x01
+#define M_C_SND 0x07
+#define M_C_REC 0x03
+
+// C field
+#define UA 0x07
+#define SET 0x03
+#define DISC 0x0B
 #define RR0 0x05
 #define RR1 0x85
 #define REJ0 0x01

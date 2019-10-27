@@ -6,20 +6,19 @@ int flag = 0;
 int timeout = 0;
 int alternate = 0;
 
-void timeOut()
-{
+void timeOut(){          //funçao usada para o timeout de operações{
     timeout++;
     flag = 1;
 }
 
-
+//função efetuada de moda diferente caso comunication_type seja SENDER/TRANSMITTER (1) ou RECEIVER (0)
 int llopen(int fd, int comunication_type){
 
-    if (comunication_type)//sender
+    if (comunication_type)
         (void)signal(SIGALRM, timeOut);
-    char address, address2;
+    char A_address, C_address;
     char byte;
-    int state = 0;
+    int state = 0;  //representa um estado na máquina de estados
 
     if (!comunication_type)
         printf("Esperando emissor...\n");
@@ -27,17 +26,18 @@ int llopen(int fd, int comunication_type){
         printf("Esperando recetor...\n");
     while (timeout <= 3){
 
-        if (comunication_type){ //Sender
-            send_SET(fd);
+        if (comunication_type){
+            send_SET_message(fd);
             alarm(3);
             flag = 0;
         }
 
-        while (state != 5 && flag == 0){
+        while (flag == 0 && state != 5)
+        { //ficaremos no ciclo enquanto state diferente de 5 e flag for igual a 0
 
-            read(fd, &byte, 1);
+            read(fd, &byte, 1);             //lê da porta byte a byte
 
-            switch (state){
+            switch (state){                 //verificamos em que estado nos encontramos e qual é a informação recebida no fd
 
             case 0: //M_FLAG
                 if (byte == M_FLAG)
@@ -45,10 +45,10 @@ int llopen(int fd, int comunication_type){
                 break;
             case 1:
                 if (comunication_type)
-                    address = M_A_SND;
+                    A_address = M_A_SND;
                 else
-                    address = M_C_REC;
-                if (byte == address)
+                    A_address = M_C_REC;
+                if (byte == A_address)
                     state = 2;
                 else if (byte == M_FLAG)
                     state = 1;
@@ -58,10 +58,10 @@ int llopen(int fd, int comunication_type){
 
             case 2:
                 if (comunication_type)
-                    address2 = UA;
+                    C_address = UA;
                 else
-                    address2 = SET;
-                if (byte == address2)
+                    C_address = SET;
+                if (byte == C_address)
                     state = 3;
                 else if (byte == M_FLAG)
                     state = 1;
@@ -69,7 +69,7 @@ int llopen(int fd, int comunication_type){
                     state = 0;
                 break;
             case 3:
-                if (byte == (address ^ address2))
+                if (byte == (A_address ^ C_address))
                     state = 4;
                 else
                     state = 0;
@@ -77,8 +77,8 @@ int llopen(int fd, int comunication_type){
             case 4:
                 if (byte == M_FLAG){
                     state = 5;
-                    if (!comunication_type) //receiver
-                        send_UA(fd, comunication_type);
+                    if (!comunication_type) //receiver recebeu informação corretamente e envia resposta UA
+                        send_UA_message(fd, comunication_type);
                     printf("Ligação Estabelecida\n");
                     return 1;
                 }
@@ -89,15 +89,15 @@ int llopen(int fd, int comunication_type){
         }
     }
 
-    printf("timeout - Ligação Não Estabelecida\n");
+    printf("TIMEOUT - Ligação Não Estabelecida...\n");
     return -1;
 }
 
-int llwrite(int fd, char *buffer, int length)
-{
+int llwrite(int fd, char *buffer, int length){
 
     fflush(NULL);
     timeout = 0;
+
     char *trama = malloc((length + 5) * sizeof(char));
     unsigned char controlo;
     unsigned char byte;
@@ -127,7 +127,7 @@ int llwrite(int fd, char *buffer, int length)
         controlo = RR1;
     else controlo = RR0;
 
-    //ESPERAR PELO ACK
+    //ESPERAR PELA CONFIRMAÇÃO DE SUCESSO NA MÁQUINA OPOSTA
     (void)signal(SIGALRM, timeOut);
     timeout = 0;
     while (timeout <= 3){
@@ -190,7 +190,7 @@ int llwrite(int fd, char *buffer, int length)
             }
         }
     }
-    printf("TIMEOUT");
+    printf("TIMEOUT\n");
     return -1;
 }
 
@@ -258,6 +258,10 @@ int llread(int fd, char *buffer){
 int llclose(int fd, int type)
 {
 
+    //type
+    //if 1 -> SENDER
+    //if 0 -> RECEIVER
+
     char address;
     int state = 0;
 
@@ -265,7 +269,7 @@ int llclose(int fd, int type)
     int receiveUA = 0;
 
     if (type == 1) // this means we are dealing with the sender
-        send_DISC(fd, type);
+        send_DISC_message(fd, type);
 
     while (timeout <= 3 || !type){
 
@@ -320,13 +324,13 @@ int llclose(int fd, int type)
                 if (current == M_FLAG){
                     state = 5;
                     if (type == 0 && receiveUA == 0){
-                        send_DISC(fd, type);
+                        send_DISC_message(fd, type);
 
                         state = 0;
                         receiveUA = 1;
                     }
                     else if (type == 1){
-                        send_UA(fd, type); // TO DO
+                        send_UA_message(fd, type); // TO DO
 
                         printf("Ligação encerrada!\n");
                         return 1;
@@ -346,216 +350,320 @@ int llclose(int fd, int type)
 }
 
 // sends DISC depending on weather its a receiver or sender
-void send_DISC(int fd, int type){
+void send_DISC_message(int fd, int type){
 
-    char trama[5];
+    char disc_message[5];
     char address;
 
-    trama[0] = M_FLAG;
-    if (type == 1){ // sender
+    disc_message[0] = M_FLAG;
+    if (type == 1){                  // sender
         address = M_A_REC;
-        trama[1] = address;
-    }
-    else{ // receiver
+        disc_message[1] = address;
+    }else{                           // receiver
         address = M_A_R;
-        trama[1] = address;
+        disc_message[1] = address;
     }
-    trama[2] = DISC;
-    trama[3] = address ^ DISC;
-    trama[4] = M_FLAG;
 
-    write(fd, trama, 5);
+    disc_message[2] = DISC;
+    disc_message[3] = address ^ DISC;
+    disc_message[4] = M_FLAG;
+
+    write(fd, disc_message, 5);
+
     fflush(NULL);
 }
 
 // sends UA
-void send_UA(int fd, int type){
+void send_UA_message(int fd, int type){
 
-    char UA_trama[5];
+    char UA_message[5];
     char address;
 
-    UA_trama[0] = M_FLAG;
+    UA_message[0] = M_FLAG;
     if (type == 1){
         address = M_A_REC;
-        UA_trama[1] = address;
-    }
-    else{
+        UA_message[1] = address;
+    }else{
         address = M_A_R;
-        UA_trama[1] = address;
+        UA_message[1] = address;
     }
-    UA_trama[2] = UA;
-    UA_trama[3] = address ^ UA;
-    UA_trama[4] = M_FLAG;
 
-    write(fd, UA_trama, 5);
+    UA_message[2] = UA;
+    UA_message[3] = address ^ UA;
+    UA_message[4] = M_FLAG;
+
+    write(fd, UA_message, 5);
     fflush(NULL);
 }
 
 // Sends SET
-void send_SET(int fd)
-{
+void send_SET_message(int fd){
 
-    char trama[5];
+    char message[5];
 
-    trama[0] = M_FLAG;
-    trama[1] = M_A_REC;
-    trama[2] = SET;
-    trama[3] = M_A_REC ^ SET;
-    trama[4] = M_FLAG;
+    message[0] = M_FLAG;
+    message[1] = M_A_REC;
+    message[2] = SET;
+    message[3] = message[1] ^ message[2];
+    message[4] = M_FLAG;
 
-    write(fd, trama, 5);
+    write(fd, message, 5);
     fflush(NULL);
 }
 
 // Sends REJ
-void send_REJ(int fd)
-{
+void send_REJ_message(int fd){
 
-    unsigned char controlo;
+    unsigned char c_char;
+
     if (alternate == 0)
-    {
-        controlo = REJ1;
-    }
+        c_char = REJ1;
     else if (alternate == 1)
-    {
-        controlo = REJ0;
-    }
+        c_char = REJ0;
 
-    unsigned char trama[5];
-    trama[0] = M_FLAG;
-    trama[1] = M_A_REC;
-    trama[2] = controlo;
-    trama[3] = M_A_REC ^ controlo;
-    trama[4] = M_FLAG;
+    unsigned char message[5];
 
-    write(fd, trama, 5);
+    message[0] = M_FLAG;
+    message[1] = M_A_REC;
+    message[2] = c_char;
+    message[3] = M_A_REC ^ c_char;
+    message[4] = M_FLAG;
+
+    write(fd, message, 5);
     fflush(NULL);
 }
 
 // Sends RR
-void send_RR(int fd)
-{
+void send_RR_message(int fd){
 
-    unsigned char controlo;
-    if (alternate == 0)
-    {
+    unsigned char c_char;
+    if (alternate == 0){
         alternate = 1;
-        controlo = RR1;
-    }
-    else if (alternate == 1)
-    {
+        c_char = RR1;
+    }else if (alternate == 1){
         alternate = 0;
-        controlo = RR0;
+        c_char = RR0;
     }
 
-    unsigned char trama[5];
-    trama[0] = M_FLAG;
-    trama[1] = M_A_REC; //Resposta do Recetor -> 0x03
-    trama[2] = controlo;
-    trama[3] = M_A_REC ^ controlo;
-    trama[4] = M_FLAG;
+    unsigned char message[5];
 
-    write(fd, trama, 5);
+    message[0] = M_FLAG;
+    message[1] = M_A_REC; //Resposta do Recetor -> 0x03
+    message[2] = c_char;
+    message[3] = M_A_REC ^ c_char;
+    message[4] = M_FLAG;
+
+    write(fd, message, 5);
     fflush(NULL);
 }
 
-char *stuffing(char *data_package, int *length){
+char *stuffer(char *to_stuff, int *size){
 
-    char *str;
-    char *aux;
-    int i;
-    int j;
 
-    str = (char *)malloc(*length);
-    aux = (char *)malloc(*length);
-    char BCC2 = 0x00;
+    char *auxiliar;
+    char *stuffed;
+    char c_bcc = 0x00;
 
-    for (i = 0, j = 0; i < *length; i++, j++)
-    {
-        BCC2 ^= data_package[i];
-        aux[i] = data_package[i];
+    stuffed = (char *)malloc(*size);
+    auxiliar = (char *)malloc(*size);
+
+    int i = 0;
+    int k = 0;
+
+    //calculates bcc2's char
+    for (; i < *size; i++, k++){
+        c_bcc ^= to_stuff[i];           //calcular bcc
+        auxiliar[i] = to_stuff[i];      //passa para o array auxiliar o que é passado para a função
     }
 
-    aux = (char *)realloc(aux, (*length) + 1);
-    aux[*length] = BCC2;
+    auxiliar = (char *)realloc(auxiliar, (*size) + 1);      //auxiliar realoca memória para lhe ser passado o bcc
+    auxiliar[*size] = c_bcc;
 
-    for (i = 0, j = 0; i < *length + 1; i++, j++)
-    {
+    i = 0;
+    k = 0;
 
-        if (aux[i] == M_FLAG){      //replacing flag
-            str[j] = 0x7d;
-            str[j + 1] = 0x5e;
-            j++;
-        }
-        else if (aux[i] == 0x7d){   //replacing flag replacer
-            str[j] = 0x7d;
-            str[j + 1] = 0x5d;
-            j++;
-        }
-        else
-            str[j] = aux[i];
+    //stuffs - from auxiliar to stuffed
+    for (; i < *size + 1; i++, k++){
+
+        if (auxiliar[i] == M_FLAG){ //replacing flag
+            stuffed[k] = 0x7d;
+            stuffed[1 + k] = 0x5e;
+            k++;
+        }else if (auxiliar[i] == 0x7d){ //replacing flag replacer
+            stuffed[k] = 0x7d;
+            stuffed[1 + k] = 0x5d;
+            k++;
+        }else
+            stuffed[k] = auxiliar[i];
     }
 
-    *length = j;
+    //updating stuffed size
+    *size = k;
 
-    return str;
+    return stuffed;
 }
 
-char *destuffing(char *msg, int *length){
+char *destuffer(char *to_destuff, int *size){
 
-    char *str = (char *)malloc(*length);
+    char *destuffed = (char *)malloc(*size);
+    int updated_size = 0;
     int i;
-    int updated_length = 0;
+    for (i = 0; i < *size; i++){
+        updated_size++;
 
-    for (i = 0; i < *length; i++)
-    {
-        updated_length++;
+        if (to_destuff[i] == 0x7d){
 
-        if (msg[i] == 0x7d){
-            if (msg[i + 1] == 0x5e){
-                str[updated_length - 1] = M_FLAG;
+            if (to_destuff[i + 1] == 0x5e){
+
+                destuffed[updated_size - 1] = M_FLAG;
+                i++;
+            }else if (to_destuff[i + 1] == 0x5d){
+
+                destuffed[updated_size - 1] = 0x7d;
                 i++;
             }
-            else if (msg[i + 1] == 0x5d){
-                str[updated_length - 1] = 0x7d;
-                i++;
-            }
-        }
-        else
-            str[updated_length - 1] = msg[i];
+        }else
+            destuffed[updated_size - 1] = to_destuff[i];
     }
-    *length = updated_length;
 
-    return str;
+    *size = updated_size;
+
+    return destuffed;
 }
 
-char *verify_bcc2(char *control_message, int *length)
-{
+char *check_bcc2(char *c_message, int *size){
 
-    char *destuffed_message = destuffing(control_message, length);
+    char *destuffed_msg = destuffer(c_message, size);
 
-    int i;
-    char control_bcc2 = 0x00;
-    for (i = 0; i < *length - 1; i++){
-        control_bcc2 ^= destuffed_message[i];
-    }
+    char c_bcc2 = 0x00;
 
-    if (control_bcc2 != destuffed_message[*length - 1]){
-        *length = -1;
+    //calculates bcc2
+    for (int i = 0; i < *size - 1; i++)
+        c_bcc2 ^= destuffed_msg[i];
+
+    //checks bcc2
+    if (c_bcc2 != destuffed_msg[*size - 1]){
+        *size = -1;
         return NULL;
     }
-    *length = *length - 1;
-    char *data_message = (char *)malloc(*length);
-    for (i = 0; i < *length; i++){
-        data_message[i] = destuffed_message[i];
-    }
 
-    return data_message;
+    *size = *size - 1;
+    char *processed_message = (char *)malloc(*size);
+
+    for (int i = 0; i < *size; i++)
+        processed_message[i] = destuffed_msg[i];
+
+    //returns message destuff and without bcc2 if correctky received
+    return processed_message;
 }
 
 
-//function found @stackoverflow
-int calculate_size_file(FILE* file){
+//parametros importantes a passar para que o reader tenha informação: nome do ficheiro e tamanho do mesmo
+//passado como argumento à função : nome do ficheiro, File* associado, se o pacote de controlo é final ou inical.
+char *assemble_c_frame(int start, FILE *file, char *name, int *size){
+
+
+    int file_size = SizeOfFile(file); //tamanho do ficheiro a transmitir
+    int name_size = strlen(name); //tamanho do nome do ficheiro
+    if (start)
+        printf("\nFile size = %d bytes\n\n", file_size);
+
+    int i = 0;
+    char fileBuffer[50];
+
+    sprintf(fileBuffer, "%d", file_size); //envia saída formatada para uma string fileBuffer.
+
+
+    *size = 5 + name_size + strlen(fileBuffer);
+    char *c_msg = malloc(*size); //aloca memória necessária para o control frame
+
+    if (start)
+        c_msg[i] = START;
+    else
+        c_msg[i] = END;
+
+    i++;
+    c_msg[i] = 0x00;
+    i++;
+    c_msg[i] = (char)strlen(fileBuffer);
+    i++;
+
+    for (; i < 3 + strlen(fileBuffer); i++)
+        c_msg[i] = fileBuffer[i - 3];
+
+    c_msg[i] = 0x01;
+    i++;
+    c_msg[i] = (char)name_size;
+    i++;
+
+    int final_pos = name_size + i;
+
+    for (int s = i; i < final_pos; i++)
+        c_msg[i] = name[i - s];
+
+    return c_msg;
+}
+
+char* build_data_packet(int packages_sent, int *length, char* buffer){
+
+    int size = *length + 4;
+
+    unsigned char* data_package =( char*) malloc(size);
+
+    data_package[0] = 0x00;
+    data_package[1] = (char) packages_sent;
+    data_package[2] = (char)(*length) / 256;
+    data_package[3] = (char)(*length) % 256;
+
+    for(size_t i = 0 ; i < *length ; i++ )
+		data_package[i+4] = buffer[i];
+
+    //atualiza o tamanho e retorna o packet com os dados
+    *length = *length + 4;
+    return data_package;
+}
+
+
+char* rem_data_packet(char* buffer, int* size){
+
+    int length = 2 * (*size);
+    char* tmp = malloc(length);
+
+    for (int i = 0; i < *size - 4; i++)
+        tmp[i] = buffer[i + 4];
+
+    *size = *size - 4;
+    return tmp;
+
+}
+
+
+char *read_control(char *control, int *file_size){
+
+    if (control[0] != START)
+        return NULL;
+
+    int pos = 4 + control[2];
+    int filename_size = control[pos];
+
+    char *buffer = malloc(100);
+
+    char *size = malloc(control[2]);
+    int i;
+
+    for (i = 0; i < filename_size; i++){        //ir buscar o nome do ficheiro
+        buffer[i] = control[pos + 1 + i];
+    }
+
+    for (i = 0; i < control[2]; i++)             //buscar o tamanho do ficheiro
+        size[i] = control[i + 3];
+
+    *file_size = atoi(size);
+    return buffer;
+}
+
+// function found @stackoverflow
+int SizeOfFile(FILE *file){
 
     int size = 0;
     int value;
@@ -575,128 +683,6 @@ int calculate_size_file(FILE* file){
 
 	// seeking to the previously saved position
 	fseek(file, 0, currentPosition);
-
-    return size;
-}
-
-//parametros importantes a passar para que o reader tenha informação: nome do ficheiro e tamanho a do mesmo
-char *control_frame(char *filename, FILE *file, int start, int *frame_size){
-
-    int file_name_size = strlen(filename);
-    int file_size = calculate_size_file(file); //Get file size
-    if (start)
-        printf("\nFile size = %d bytes\n\n", file_size);
-    int i = 0;
-    char file_size_in_string[30];
-    sprintf(file_size_in_string, "%d", file_size);
-
-    *frame_size = 5 + file_name_size + strlen(file_size_in_string);
-    char *control_frame = malloc(*frame_size);
-
-    if (start)
-        control_frame[i] = START;
-    else
-        control_frame[i] = END;
-
-    i++;
-    control_frame[i] = 0x00;
-    i++;
-    control_frame[i] = (char)strlen(file_size_in_string);
-    i++;
-
-    for (; i < strlen(file_size_in_string) + 3; i++){
-
-        control_frame[i] = file_size_in_string[i - 3];
-    }
-
-    control_frame[i] = 0x01;
-    i++;
-    control_frame[i] = (char)file_name_size;
-    i++;
-
-    int j;
-    for (j = i; i < file_name_size + j; i++){
-
-        control_frame[i] = filename[i - j];
-    }
-
-    return control_frame;
-}
-
-char* data_packet(int packages_sent, int *length, char* buffer){
-
-    int size = *length + 4;
-
-    unsigned char* data_package =( char*) malloc(size);
-
-    data_package[0] = 0x00;
-    data_package[1] = (char) packages_sent;
-    data_package[2] = (char) (*length) / 256;
-    data_package[3] = (char) (*length) % 256;
-
-    for(size_t i = 0 ; i < *length ; i++ )
-		data_package[i+4] = buffer[i];
-
-
-    // llwrite(fd,data_package,length);
-    // free(data_package);
-    *length = *length + 4;
-    return data_package;
-}
-
-
-char* rem_data_packet(char* buffer, int* length){
-
-    int size = 2 * (*length);
-    char* tmp = malloc(size);
-
-    for(int i = 0; i < *length - 4; i++)
-        tmp[i] = buffer[i + 4];
-
-    *length = *length - 4;
-    return tmp;
-
-}
-
-
-char *read_control(char *control, int *file_size){
-
-    if (control[0] != START)
-        return NULL;
-
-    int pos = 4 + control[2];
-    int filename_size = control[4 + control[2]];
-
-    char *buffer = malloc(100);
-
-    char *size = malloc(control[2]);
-    int i;
-
-    for (i = 0; i < filename_size; i++){
-        buffer[i] = control[pos + 1 + i];
-    }
-
-    for (i = 0; i < control[2]; i++)
-        size[i] = control[i + 3];
-
-    *file_size = atoi(size);
-    return buffer;
-}
-
-int getFileSize(FILE *file){
-
-    printf("desobrimos?\n");
-    int currentPosition = ftell(file);
-
-    printf("sera aqui?\n");
-    if (fseek(file, 0, SEEK_END) == -1){
-        printf("ERROR: Could not get file size.\n");
-        return -1;
-    }
-
-    int size = ftell(file);
-
-    fseek(file, 0, currentPosition);
 
     return size;
 }

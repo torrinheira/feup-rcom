@@ -28,30 +28,28 @@ int llclose(int fd, int type);
 
 void timeOut();
 
-void send_UA(int fd, int type);
+void send_UA_message(int fd, int type);
 
-void send_DISC(int fd, int type);
+void send_DISC_message(int fd, int type);
 
-void send_SET(int fd);
+void send_SET_message(int fd);
 
-void send_RR(int fd);
+void send_RR_message(int fd);
 
-void send_REJ(int fd);
+void send_REJ_message(int fd);
 
-char* stuffing(char* data_package, int* length);
+char* stuffer(char* to_stuff, int* size);
 
-char* destuffing(char* msg, int* length);
+char* destuffer(char* to_destuff, int* size);
 
-char* verify_bcc2(char* control_message, int *length);
+char* check_bcc2(char* c_message, int *size);
 
-int calculate_size_file(FILE* file);
+char *assemble_c_frame(int start, FILE *file, char *name, int *size);
 
-char *control_frame(char *filename, FILE *file, int start, int *frame_size);
+char *build_data_packet(int packages_sent, int *length, char *buffer);
 
-char *data_packet(int packages_sent, int *length, char *buffer);
-
-char* rem_data_packet(char* buffer, int* length);
+char* rem_data_packet(char* buffer, int* size);
 
 char *read_control(char *control_p, int *file_size);
 
-int getFileSize(FILE *file);
+int SizeOfFile(FILE *file);
