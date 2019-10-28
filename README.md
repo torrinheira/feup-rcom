@@ -11,5 +11,5 @@ Repository of code developed for the course RCOM @FEUP.
 
 ## Grades
 
-* **Proj01 - Data Binding Protocol** : -/20
+* **Proj01 - Data Binding Protocol** : - / 20
 
