@@ -8,3 +8,8 @@ Repository of code developed for the course RCOM @FEUP.
 
 ## Reports
 * **Proj01** : [1st_report](https://docs.google.com/document/d/12-LPGWDCf6L6wsEQBZ57KKpuL-lDPBuwTgmlOBIi5Og/edit)
+
+# Grades
+
+* **Proj01 - Data Binding Protocol** : -/20
+
