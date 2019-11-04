@@ -1,5 +1,3 @@
-/*      (C)2000 FEUP  */
-
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
