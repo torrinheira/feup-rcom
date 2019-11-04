@@ -46,3 +46,6 @@ int main(int argc, char** argv){
 }
 
 
+//fazer sockets para clientes
+//no server já está implementado
+//código fornecido é para a parte da aplicação
