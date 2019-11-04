@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
         }
 
         printf("Host name  : %s\n", h->h_name);
-        printf("IP Address : %s\n",inet_ntoa(*((struct in_addr *)h->h_addr))); //alteração aqui (from h_addr to addrtype)
+        printf("IP Address : %s\n",inet_ntoa(*((struct in_addr *)h->h_addr)));//h_addr bugging
 
         return 0;
 }
