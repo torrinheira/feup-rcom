@@ -1,1 +1,1 @@
-//estamos fodidos e chumbados
+#include "macros.h"
