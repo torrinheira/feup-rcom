@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <netdb.h>
-#include <strings.h>
+#include <string.h>
+
 
 #include "macros.h"
