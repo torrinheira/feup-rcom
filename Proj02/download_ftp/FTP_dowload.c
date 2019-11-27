@@ -1,5 +1,6 @@
 #include "auxiliar_func.h"
 #include "macros.h"
+#include <stdbool.h>
 
 int main(int argc, char ** argv){
 
@@ -47,14 +48,22 @@ int main(int argc, char ** argv){
     int estado = 0;
     int i = 0;
     int indice = 0;
+
+    bool erro = false;
+    bool found_1 = false;
+    bool found_2 = false;
+    bool found_3 = false;
     
-    while( i < strlen(argv1)){
+
+    
+    while( i < strlen(argv1) && !erro){
         switch (estado)
         {
         case 0:
             if(argv1[i] == ':'){
                 estado = 1;
                 indice = 0;
+                found_1 = true;
             }
             else{
                 name[indice] = argv1[i];
@@ -66,6 +75,7 @@ int main(int argc, char ** argv){
             if(argv1[i] == '@'){
                 estado = 2;
                 indice = 0;
+                found_2 = true;
             }
             else{
                 password[indice] = argv1[i];
@@ -78,13 +88,14 @@ int main(int argc, char ** argv){
                 indice = 0;
             }
             else{
-                printf("Error parsing URL...\n");
+                erro = true;
             }
             break;
         case 3:
             if(argv1[i] == '/'){
                 estado = 4;
                 indice = 0;
+                found_3 = true;
             }
             else{
                 host[indice] = argv1[i];
@@ -99,6 +110,11 @@ int main(int argc, char ** argv){
         }
 
         i++;
+    }
+
+    if(erro || !found_1 || !found_2 || !found_3){
+        printf("Error parsing url\n");
+        return -1;
     }
 
 
