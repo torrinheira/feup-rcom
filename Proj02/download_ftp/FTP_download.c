@@ -33,17 +33,17 @@ int main(int argc, char ** argv){
 
     //state machine
 
-    char name[100];
-    memset(name, 0, 100);
+    char name[SIZE];
+    memset(name, 0, SIZE);
 
-    char password[100];
-    memset(password, 0, 100);
+    char password[SIZE];
+    memset(password, 0, SIZE);
 
-    char host[100];
-    memset(host, 0, 100);
+    char host[SIZE];
+    memset(host, 0, SIZE);
 
-    char path_file[100];
-    memset(path_file, 0, 100);
+    char path_file[SIZE];
+    memset(path_file, 0, SIZE);
 
     int estado = 0;
     int i = 0;
@@ -146,6 +146,28 @@ int main(int argc, char ** argv){
     //===================================================== FTP client process ======================================================//
     //===============================================================================================================================//  
     
+
+    //check clientTCP.c from the given code (lot of code taken from there)
+    int	sockfd;
+	struct	sockaddr_in server_addr;
+
+    /*server address handling*/
+	bzero((char*)&server_addr,sizeof(server_addr));
+	server_addr.sin_family = AF_INET;
+	server_addr.sin_addr.s_addr = inet_addr(SERVER_ADDRESS);	/*32 bit Internet address network byte ordered*/
+	server_addr.sin_port = htons(SERVER_PORT);		/*server TCP port must be network byte ordered */
+
+    /*open an TCP socket*/
+	if ((sockfd = socket(AF_INET,SOCK_STREAM,0)) < 0) {
+    		perror("socket()");
+        	exit(0);
+    	}
+	/*connect to the server*/
+    	if(connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0){
+        	perror("connect()");
+		    exit(0);
+	}
+
     return 0;
     
 }
