@@ -15,14 +15,12 @@ int main(int argc, char ** argv){
     int url_size = strlen(argv[1]);
     int new_size = url_size - 7;
 
-    
-    
+     
     if(new_size <= 8){
         printf("Error: Check url... Something went wrong\n");
         return -1;
     }
 
-    //obtem nome do utilizador
     char argv1[new_size];
 
     int j = 7;
@@ -118,11 +116,13 @@ int main(int argc, char ** argv){
     }
 
 
-    printf("%s\n", name);
-    printf("%s\n", password);
-    printf("%s\n", host);
-    printf("%s\n",path_file);
+    printf("Name: %s\n", name);
+    printf("Password: %s\n", password);
+    printf("Host: %s\n", host);
+    printf("URL path: %s\n",path_file);
 
+    //=============================================================get host ip======================================================
+    
     
     return 0;
     
