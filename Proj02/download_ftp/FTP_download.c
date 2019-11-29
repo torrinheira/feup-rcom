@@ -168,6 +168,9 @@ int main(int argc, char ** argv){
 		    exit(0);
 	}
 
+    //after the connection with the server we'll need to read the answer
+    
+
     return 0;
     
 }
