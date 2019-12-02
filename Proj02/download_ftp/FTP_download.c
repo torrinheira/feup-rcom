@@ -1,13 +1,18 @@
 #include "auxiliar_func.h"
 #include "macros.h"
 
+
 int main(int argc, char ** argv){
+
+
 
     if(argc != 2){
         printf("Arguments are not correct\n"); 
         return -2;  
     }
    
+
+
     //====================================================================================================================//
     //==================================================== parse arguments ===============================================//
     //====================================================================================================================//
@@ -123,6 +128,8 @@ int main(int argc, char ** argv){
     printf("URL path: %s\n",path_file);
 
 
+
+
     //===============================================================================================================================//    
     //============================================================ get host ip ======================================================//
     //===============================================================================================================================//    
@@ -141,6 +148,9 @@ int main(int argc, char ** argv){
     printf("IP Address : %s\n", ip);
 
 
+
+
+
     //===============================================================================================================================//    
     //===================================================== FTP client process ======================================================//
     //===============================================================================================================================//  
@@ -153,7 +163,7 @@ int main(int argc, char ** argv){
     /*server address handling*/
 	bzero((char*)&server_addr,sizeof(server_addr));
 	server_addr.sin_family = AF_INET;
-	server_addr.sin_addr.s_addr = inet_addr(SERVER_ADDRESS);	/*32 bit Internet address network byte ordered*/
+	server_addr.sin_addr.s_addr = inet_addr(ip);	/*32 bit Internet address network byte ordered*/
 	server_addr.sin_port = htons(SERVER_PORT);		/*server TCP port must be network byte ordered */
 
     /*open an TCP socket*/
@@ -171,8 +181,14 @@ int main(int argc, char ** argv){
     
     char host_answer[3];
     read_answer(sockfd, host_answer);
+        
+    if(host_answer[0] == '2'){
+        printf("> Connection established\n");
+    }
     
 
     return 0;
     
 }
+
+//       ftp://[anonymous:anonymous@]speedtest.tele2.net/1KB.zip
