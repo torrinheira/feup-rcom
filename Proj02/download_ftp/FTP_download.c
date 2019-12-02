@@ -1,6 +1,5 @@
 #include "auxiliar_func.h"
 #include "macros.h"
-#include <stdbool.h>
 
 int main(int argc, char ** argv){
 
@@ -168,7 +167,10 @@ int main(int argc, char ** argv){
 		    exit(0);
 	}
 
-    //after the connection with the server we'll need to read the answer
+    /*after the connection with the server we'll need to read the answer( always with 3 bits)*/
+    
+    char host_answer[3];
+    read_answer(sockfd, host_answer);
     
 
     return 0;

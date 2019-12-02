@@ -8,6 +8,9 @@
 #include <signal.h>
 #include <netdb.h>
 #include <string.h>
+#include <stdbool.h>
+
 
 #include "macros.h"
 
+void read_answer(int socket, char *host_answer);
