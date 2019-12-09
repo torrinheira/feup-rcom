@@ -14,3 +14,4 @@
 #include "macros.h"
 
 void read_answer(int socket, char *host_answer);
+int parseResponse(char* response);

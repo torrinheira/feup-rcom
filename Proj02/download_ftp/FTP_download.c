@@ -157,8 +157,11 @@ int main(int argc, char ** argv){
     
 
     //check clientTCP.c from the given code (lot of code taken from there)
-    int	sockfd;
+    int	sockfd; //um socket para estabelecer ligação
+    int sockfd_file_transfer; //um socket para download do ficherio
 	struct	sockaddr_in server_addr;
+	struct	sockaddr_in server_addr_file_transfer;
+
 
     /*server address handling*/
 	bzero((char*)&server_addr,sizeof(server_addr));
@@ -185,6 +188,43 @@ int main(int argc, char ** argv){
     if(host_answer[0] == '2'){
         printf("> Connection established\n");
     }
+
+    printf("> Sending username \n");
+    //send user command to socket
+    char response[SIZE];
+    dprintf(sockfd, "user %s\r\n", name);
+    read(sockfd, response, SIZE);
+
+    if(strncmp(response, "331", 3) == 0){//user certo,  mandar pass
+        printf("> Sending password \n");
+
+        char response2[SIZE];
+        dprintf(sockfd, "pass %s\r\n", password);
+        read(sockfd, response2, SIZE);
+        if(strncmp(response2, "230", 3) == 0){// se pass certa dowload ficheiro(entrar em modo passivo e abrir 2º socket)
+            //entrar em modo passivo e fazer download do ficheiro
+            printf("> Downloading file\n");
+	        dprintf(sockfd, "pasv\r\n");//printf para um filedescriptor
+            printf("> Entered passive mode\n");
+            char response3[SIZE];
+            read(sockfd, response3, SIZE);
+            printf("%s", response3);
+            //ir buscar uma porta ()
+            int port_to_download = parseResponse(response3);
+            printf("Port: %d\n", port_to_download);
+            //buscar algures um retrive
+
+        }
+        else if(strncmp(response2, "430", 3) == 0){
+            printf("> Invalid credentials \n");
+            return -1;
+        }
+        else{
+            printf("> Error occured \n");
+            return -1;
+        }
+    }
+
     
 
     return 0;
