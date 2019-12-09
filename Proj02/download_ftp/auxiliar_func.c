@@ -95,5 +95,26 @@ int parseResponse(char* response){
 	int lessSignificant = atoi(lessSig);
 	return (mostSignificant * 256 + lessSignificant);
 }
+
+void create_file(int sockfd_file_transfer, char* path_file){
+	FILE *file = fopen((char *)path_file, "wb+");
+
+    
+    char bufSocket[1024];
+ 	int bytes;
+    int counter = 0;
+
+    //nao faz nenhuma vez este ciclo
+	printf("> Starting download!\n");
+
+ 	while ((bytes = read(sockfd_file_transfer, bufSocket, 1024))>0) {
+    	bytes = fwrite(bufSocket, bytes, 1, file);   
+    }
+
+    fclose(file);
+	printf("\n");
+	printf("> Done!\n");
+
+}
 //150
 //226

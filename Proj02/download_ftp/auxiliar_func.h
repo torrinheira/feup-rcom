@@ -9,9 +9,12 @@
 #include <netdb.h>
 #include <string.h>
 #include <stdbool.h>
+#include <ctype.h>
+
 
 
 #include "macros.h"
 
 void read_answer(int socket, char *host_answer);
 int parseResponse(char* response);
+void create_file(int sockfd_file_transfer, char* path_file);

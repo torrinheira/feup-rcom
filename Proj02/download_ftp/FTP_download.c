@@ -201,6 +201,7 @@ int main(int argc, char ** argv){
         char response2[SIZE];
         dprintf(sockfd, "pass %s\r\n", password);
         read(sockfd, response2, SIZE);
+
         if(strncmp(response2, "230", 3) == 0){// se pass certa dowload ficheiro(entrar em modo passivo e abrir 2º socket)
             //entrar em modo passivo e fazer download do ficheiro
             printf("> Downloading file\n");
@@ -232,9 +233,9 @@ int main(int argc, char ** argv){
             }
 
             //buscar algures um retrive
-
-
-            
+            printf("> Sending retrieve\n");
+	        dprintf(sockfd, "retr %s\r\n", path_file);//printf para um filedescriptor(antigo)
+            create_file(sockfd_file_transfer, path_file);
         }
         else if(strncmp(response2, "430", 3) == 0){
             printf("> Invalid credentials \n");
