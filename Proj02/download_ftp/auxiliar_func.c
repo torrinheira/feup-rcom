@@ -95,3 +95,5 @@ int parseResponse(char* response){
 	int lessSignificant = atoi(lessSig);
 	return (mostSignificant * 256 + lessSignificant);
 }
+//150
+//226

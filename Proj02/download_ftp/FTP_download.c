@@ -206,14 +206,35 @@ int main(int argc, char ** argv){
             printf("> Downloading file\n");
 	        dprintf(sockfd, "pasv\r\n");//printf para um filedescriptor
             printf("> Entered passive mode\n");
+
             char response3[SIZE];
             read(sockfd, response3, SIZE);
             printf("%s", response3);
-            //ir buscar uma porta ()
+
             int port_to_download = parseResponse(response3);
             printf("Port: %d\n", port_to_download);
+
+            /*server address handling*/
+            bzero((char*)&server_addr_file_transfer,sizeof(server_addr_file_transfer));
+            server_addr_file_transfer.sin_family = AF_INET;
+            server_addr_file_transfer.sin_addr.s_addr = inet_addr(ip);	        /*32 bit Internet address network byte ordered*/
+            server_addr_file_transfer.sin_port = htons(port_to_download);		/*server TCP port must be network byte ordered */
+
+            /*open an TCP socket*/
+            if ((sockfd_file_transfer = socket(AF_INET,SOCK_STREAM,0)) < 0) {
+                    perror("socket()");
+                    exit(0);
+                }
+            /*connect to the server*/
+                if(connect(sockfd_file_transfer, (struct sockaddr *)&server_addr_file_transfer, sizeof(server_addr_file_transfer)) < 0){
+                    perror("connect()");
+                    exit(0);
+            }
+
             //buscar algures um retrive
 
+
+            
         }
         else if(strncmp(response2, "430", 3) == 0){
             printf("> Invalid credentials \n");
