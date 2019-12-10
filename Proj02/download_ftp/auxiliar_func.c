@@ -97,24 +97,99 @@ int parseResponse(char* response){
 }
 
 void create_file(int sockfd_file_transfer, char* path_file){
-	FILE *file = fopen((char *)path_file, "wb+");
+	FILE *file = fopen(path_file, "wb+");
 
     
-    char bufSocket[1024];
+    char bufSocket[1000];
  	int bytes;
     int counter = 0;
 
-    //nao faz nenhuma vez este ciclo
 	printf("> Starting download!\n");
 
- 	while ((bytes = read(sockfd_file_transfer, bufSocket, 1024))>0) {
-    	bytes = fwrite(bufSocket, bytes, 1, file);   
+    while ((bytes = read(sockfd_file_transfer, bufSocket, 1000))>0) {
+	        printf("> Start!\n");
+            bytes = fwrite(bufSocket, bytes, 1, file);   
     }
-
+   
     fclose(file);
 	printf("\n");
 	printf("> Done!\n");
 
+}
+
+//reads response code from the server
+void readResponse(int socketfd, char *responseCode)
+{
+	int state = 0;
+	int index = 0;
+	char c;
+
+	while (state != 3)
+	{	
+		read(socketfd, &c, 1);
+		printf("%c", c);
+		switch (state)
+		{
+		//waits for 3 digit number followed by ' ' or '-'
+		case 0:
+			if (c == ' ')
+			{
+				if (index != 3)
+				{
+					printf(" > Error receiving response code\n");
+					return;
+				}
+				index = 0;
+				state = 1;
+			}
+			else
+			{
+				if (c == '-')
+				{
+					state = 2;
+					index=0;
+				}
+				else
+				{
+					if (isdigit(c))
+					{
+						responseCode[index] = c;
+						index++;
+					}
+				}
+			}
+			break;
+		//reads until the end of the line
+		case 1:
+			if (c == '\n')
+			{
+				state = 3;
+			}
+			break;
+		//waits for response code in multiple line responses
+		case 2:
+			if (c == responseCode[index])
+			{
+				index++;
+			}
+			else
+			{
+				if (index == 3 && c == ' ')
+				{
+					state = 1;
+				}
+				else 
+				{
+				  if(index==3 && c=='-'){
+					index=0;
+					
+				}
+				}
+				
+			}
+			break;
+		}
+	}
 }
 //150
 //226
