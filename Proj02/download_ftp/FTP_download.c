@@ -11,25 +11,7 @@ int main(int argc, char ** argv){
         return -2;  
     }
 
-    /*reverts string*/
-    /*
-    int i2, j2, k2;
-    
-    char rev[100];
-    printf("The original string is %s\n", argv[1]);
-    for(i2 = 0; (argv[1])[i2] != '\0'; i2++);
-    {
-        k2 = i2-1;
-    }
-    for(j2 = 0; j2 <= i2-1; j2++)
-    {
-        rev[j2] = (argv[1])[k2];
-        k2--;
-    }
-    printf("The final string is %s\n", rev);
-
-
-*/
+   
    
 
 
@@ -229,16 +211,7 @@ int main(int argc, char ** argv){
 		    exit(0);
 	}
 
-    /*after the connection with the server we'll need to read the answer( always with 3 bits)*/
     
-    /*
-    char host_answer[3];
-    read_answer(sockfd, host_answer);
-        
-    if(host_answer[0] == '2'){
-        printf("> Connection established\n");
-    }
-    */
 	char responseCode[3];
    readResponse(sockfd, responseCode); 
 	if (responseCode[0] == '2')
@@ -246,32 +219,13 @@ int main(int argc, char ** argv){
 		printf("> Connection Estabilished\n"); 
 	}
 
-    //ler lixo do buffer
-    /*
-    char c;
-    int nada ;
-    while((nada = read(sockfd, &c, 1)) > 0){
-        printf("%c", c);
-    }
-    */
+   
 
     printf("> Sending username \n");
-    //send user command to socket
-/*
-    char caracter;
-    int nada ;
-    while((nada = read(sockfd, &caracter, 1)) > 0){
-        printf("%c", caracter);
-    }
-
-    printf("> Sending username2 \n");
-
-*/
+   
     char response[SIZE];
     dprintf(sockfd, "user %s\r\n", name);
     read(sockfd, response, SIZE);
-    //response[SIZE - 1] = '\0';
-   // printf("R1 : %s\n END\n", response);
 
     if(strncmp(response, "331", 3) == 0){//user certo,  mandar pass
         printf("> Sending password \n");
@@ -279,9 +233,7 @@ int main(int argc, char ** argv){
         char response2[SIZE];
         dprintf(sockfd, "pass %s\r\n", password);
         read(sockfd, response2, SIZE);
-        //response2[SIZE - 1] = '\0';
 
-       // printf("R2 : %s\n END\n", response2);
 
         if(strncmp(response2, "230", 3) == 0){// se pass certa dowload ficheiro(entrar em modo passivo e abrir 2º socket)
             //entrar em modo passivo e fazer download do ficheiro
@@ -312,12 +264,8 @@ int main(int argc, char ** argv){
                     exit(0);
             }
 
-            //buscar algures um retrive
             printf("> Sending retrieve\n");
 	        dprintf(sockfd, "retr %s\r\n", path_file);//printf para um filedescriptor(antigo)
-            //write(sockfd, "retr ", 5);
-	        //write(sockfd, commandContent, strlen(commandContent));
-	        //write(sockfd, "\n", 1);
             create_file(sockfd_file_transfer, file_name);
             
         }
@@ -343,9 +291,6 @@ int main(int argc, char ** argv){
     return 0;
     
 }
-//////////////////////////////////// falta ler as respostas e dar display quando da merda////////////////
 
 //       ftp://[anonymous:anonymous@]speedtest.tele2.net/1KB.zip
-
-//ftp.up.pt
 

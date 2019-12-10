@@ -100,88 +100,76 @@ void create_file(int sockfd_file_transfer, char* path_file){
 	FILE *file = fopen(path_file, "wb+");
 
     
-    char bufSocket[1000];
+    char buffer[1000];
  	int bytes;
     int counter = 0;
 
 	printf("> Starting download!\n");
 
-    while ((bytes = read(sockfd_file_transfer, bufSocket, 1000))>0) {
-	        printf("> Start!\n");
-            bytes = fwrite(bufSocket, bytes, 1, file);   
+    while ((bytes = read(sockfd_file_transfer, buffer, 1000))>0) {
+            printf("...");
+            bytes = fwrite(buffer, bytes, 1, file);   
     }
    
     fclose(file);
-	printf("\n");
+    printf("\n");
 	printf("> Done!\n");
 
 }
 
 //reads response code from the server
-void readResponse(int socketfd, char *responseCode)
+void readResponse(int sockfd, char *response)
 {
-	int state = 0;
-	int index = 0;
+	int indece = 0;
 	char c;
+	int estado = 0;
 
-	while (state != 3)
-	{	
-		read(socketfd, &c, 1);
+	while (estado != 3)
+    {	
+		read(sockfd, &c, 1);
 		printf("%c", c);
-		switch (state)
-		{
-		//waits for 3 digit number followed by ' ' or '-'
+		switch (estado){
+		//espera 3 digitos seguidos por '-' ou ' '
 		case 0:
-			if (c == ' ')
-			{
-				if (index != 3)
-				{
+			if (c == ' '){
+				if (indece != 3){
 					printf(" > Error receiving response code\n");
 					return;
 				}
-				index = 0;
-				state = 1;
+				indece = 0;
+				estado = 1;
 			}
-			else
-			{
-				if (c == '-')
-				{
-					state = 2;
-					index=0;
+			else{
+				if (c == '-'){
+					estado = 2;
+					indece=0;
 				}
-				else
-				{
-					if (isdigit(c))
-					{
-						responseCode[index] = c;
-						index++;
+				else{
+					if (isdigit(c)){
+						response[indece] = c;
+						indece++;
 					}
 				}
 			}
 			break;
-		//reads until the end of the line
+		//vai ler até ao fim da linha
 		case 1:
-			if (c == '\n')
-			{
-				state = 3;
+			if (c == '\n'){
+				estado = 3;
 			}
 			break;
-		//waits for response code in multiple line responses
+		//espera pelo código de resposta nas várias linhas
 		case 2:
-			if (c == responseCode[index])
-			{
-				index++;
+			if (c == response[indece]){
+				indece++;
 			}
-			else
-			{
-				if (index == 3 && c == ' ')
-				{
-					state = 1;
+			else{
+				if (indece== 3 && c == ' '){
+					estado = 1;
 				}
-				else 
-				{
-				  if(index==3 && c=='-'){
-					index=0;
+				else {
+				  if(indece==3 && c=='-'){
+					indece=0;
 					
 				}
 				}

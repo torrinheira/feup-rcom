@@ -18,4 +18,4 @@
 void read_answer(int socket, char *host_answer);
 int parseResponse(char* response);
 void create_file(int sockfd_file_transfer, char* path_file);
-void readResponse(int socketfd, char *responseCode);
+void readResponse(int sockfd, char *response);
