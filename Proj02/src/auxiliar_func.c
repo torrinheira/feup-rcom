@@ -124,16 +124,16 @@ void readResponse(int sockfd, char *response)
 	char c;
 	int estado = 0;
 
+    
 	while (estado != 3)
     {	
 		read(sockfd, &c, 1);
 		printf("%c", c);
 		switch (estado){
-		//espera 3 digitos seguidos por '-' ou ' '
 		case 0:
 			if (c == ' '){
 				if (indece != 3){
-					printf(" > Error receiving response code\n");
+					printf(" > Error\n");
 					return;
 				}
 				indece = 0;
@@ -152,13 +152,11 @@ void readResponse(int sockfd, char *response)
 				}
 			}
 			break;
-		//vai ler até ao fim da linha
 		case 1:
 			if (c == '\n'){
 				estado = 3;
 			}
 			break;
-		//espera pelo código de resposta nas várias linhas
 		case 2:
 			if (c == response[indece]){
 				indece++;
@@ -179,5 +177,3 @@ void readResponse(int sockfd, char *response)
 		}
 	}
 }
-//150
-//226
